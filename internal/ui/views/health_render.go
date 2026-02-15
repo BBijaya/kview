@@ -747,7 +747,7 @@ func (v *HealthView) renderRestarts(width int) string {
 	gap := bgStyle.Render(" ")
 	hdr := bgStyle.Render("  ") +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.name, "POD")) + gap +
-		hdrStyle.Render(fmt.Sprintf("%*s", cols.restarts, "RESTARTS")) + gap +
+		hdrStyle.Render(fmt.Sprintf("%-*s", cols.restarts, "RESTARTS")) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.reason, "REASON")) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.status, "STATUS")) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.lastRestart, "LAST RESTART"))
@@ -798,7 +798,7 @@ func (v *HealthView) renderRestarts(width int) string {
 
 		line := healthIndicator(isSel) +
 			nameStyle.Render(fmt.Sprintf("%-*s", cols.name, theme.TruncateString(podName, cols.name))) + gap +
-			countStyle.Render(fmt.Sprintf("%*d", cols.restarts, p.Restarts)) + gap +
+			countStyle.Render(fmt.Sprintf("%-*d", cols.restarts, p.Restarts)) + gap +
 			reasonStyle.Render(fmt.Sprintf("%-*s", cols.reason, theme.TruncateString(reason, cols.reason))) + gap +
 			mutedStyle.Render(theme.StatusIconPrefix(p.Phase)+" "+fmt.Sprintf("%-*s", cols.status, theme.TruncateString(p.Phase, cols.status))) + gap +
 			mutedStyle.Render(fmt.Sprintf("%-*s", cols.lastRestart, lastRestart))
@@ -826,6 +826,20 @@ func (v *HealthView) renderIssues(width int) string {
 	showCursor := v.itemMode && v.sectionFocus == sectionIssues
 
 	cols := issueColWidths(width)
+
+	// Column header
+	hdrStyle := lipgloss.NewStyle().
+		Foreground(theme.ColorAccent).
+		Background(theme.ColorBackground).
+		Bold(true)
+	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+	gap := bgStyle.Render(" ")
+	hdr := bgStyle.Render("  ") +
+		hdrStyle.Render(fmt.Sprintf("%-*s", cols.resource, "RESOURCE")) + gap +
+		hdrStyle.Render(fmt.Sprintf("%-*s", cols.severity, "SEVERITY")) + gap +
+		hdrStyle.Render(fmt.Sprintf("%-*s", cols.problem, "PROBLEM"))
+	b.WriteString(theme.PadToWidth(hdr, width, theme.ColorBackground))
+	b.WriteString("\n")
 
 	for i, d := range v.diagnoses {
 		isSel := showCursor && i == v.issueCursor
@@ -856,8 +870,8 @@ func (v *HealthView) renderIssues(width int) string {
 		resourceName := v.qualifiedName(d.Namespace, d.ResourceName)
 
 		line := healthIndicator(isSel) +
-			severityStyle.Render(icon+" "+fmt.Sprintf("%-*s", cols.severity, severityLabel)) + gap +
 			resourceStyle.Render(fmt.Sprintf("%-*s", cols.resource, theme.TruncateString(resourceName, cols.resource))) + gap +
+			severityStyle.Render(icon+"  "+fmt.Sprintf("%-*s", cols.severity, severityLabel)) + gap +
 			problemStyle.Render(fmt.Sprintf("%-*s", cols.problem, theme.TruncateString(d.Problem, cols.problem)))
 
 		b.WriteString(healthPadRow(line, width, isSel))
@@ -888,6 +902,21 @@ func (v *HealthView) renderEvents(width int) string {
 
 	cols := eventColWidths(width)
 
+	// Column header
+	hdrStyle := lipgloss.NewStyle().
+		Foreground(theme.ColorAccent).
+		Background(theme.ColorBackground).
+		Bold(true)
+	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+	gap := bgStyle.Render(" ")
+	hdr := bgStyle.Render("  ") +
+		hdrStyle.Render(fmt.Sprintf("%-*s", cols.resource, "RESOURCE")) + gap +
+		hdrStyle.Render(fmt.Sprintf("%-*s", cols.ago, "AGO")) + gap +
+		hdrStyle.Render(fmt.Sprintf("%-*s", cols.typeLabel, "TYPE")) + gap +
+		hdrStyle.Render(fmt.Sprintf("%-*s", cols.message, "MESSAGE"))
+	b.WriteString(theme.PadToWidth(hdr, width, theme.ColorBackground))
+	b.WriteString("\n")
+
 	for i := 0; i < maxEvents; i++ {
 		e := v.events[i]
 		isSel := showCursor && i == v.eventCursor
@@ -914,9 +943,9 @@ func (v *HealthView) renderEvents(width int) string {
 		fullMsg := theme.TruncateString(e.Reason+": "+e.Message, cols.message)
 
 		line := healthIndicator(isSel) +
-			agoStyle.Render(fmt.Sprintf("%-*s", cols.ago, ago+" ago")) + gap +
-			typeStyle.Render(typeIcon+" "+fmt.Sprintf("%-*s", cols.typeLabel, typeLabel)) + gap +
 			resourceStyle.Render(fmt.Sprintf("%-*s", cols.resource, theme.TruncateString(resourceName, cols.resource))) + gap +
+			agoStyle.Render(fmt.Sprintf("%-*s", cols.ago, ago+" ago")) + gap +
+			typeStyle.Render(typeIcon+"  "+fmt.Sprintf("%-*s", cols.typeLabel, typeLabel)) + gap +
 			msgStyle.Render(fmt.Sprintf("%-*s", cols.message, fullMsg))
 
 		b.WriteString(healthPadRow(line, width, isSel))
