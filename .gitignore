@@ -1,0 +1,39 @@
+# Binaries
+kview
+bin/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Vendor (if not committed)
+# vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+
+# Claude Code
+CLAUDE.md
+.claude/
+
+# Environment
+.env
+.env.*

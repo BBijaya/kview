@@ -1,0 +1,588 @@
+package ui
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/bijaya/kview/internal/ui/components"
+	"github.com/bijaya/kview/internal/ui/theme"
+	"github.com/bijaya/kview/internal/ui/views"
+)
+
+// View renders the application layout:
+//   - Header (borderless): cluster info + shortcuts + category/resource tabs (7 plain text rows)
+//   - Command box (conditional): appears between header and body when : is pressed
+//   - Body box (bordered): resource label + main table/view content
+func (a *App) View() string {
+	if a.quitting {
+		return "Goodbye!\n"
+	}
+
+	// During shell exec, return a blank screen so the renderer's final flush
+	// before ReleaseTerminal writes invisible content (no TUI leak to normal screen).
+	if a.execing {
+		return strings.Repeat("\n", max(a.height-1, 0))
+	}
+
+	// Ensure minimum dimensions
+	width := a.width
+	height := a.height
+	if width < 40 {
+		width = 40
+	}
+	if height < 15 {
+		height = 15
+	}
+
+	// Calculate layout heights
+	// Header: 7 info lines (borderless, plain text rows)
+	// Footer: 1 line (resource name + loading status)
+	headerHeight := 7
+	footerHeight := 1
+	commandBoxHeight := 0
+	if a.inputMode == ModeCommand || a.inputMode == ModeFilter {
+		commandBoxHeight = 3 // top border + input + bottom border
+	}
+	bodyBoxHeight := height - headerHeight - commandBoxHeight - footerHeight
+	if bodyBoxHeight < 5 {
+		bodyBoxHeight = 5
+	}
+	bodyInnerHeight := bodyBoxHeight - 2 // minus body frame borders
+	contentHeight := bodyInnerHeight
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+
+	innerWidth := width - 2 // body inner width (frame border offset)
+
+	// Ensure inner dimensions are valid
+	if innerWidth < 20 {
+		innerWidth = 20
+	}
+
+	// === 1. Build header content (7 lines, borderless) ===
+	a.header.SetWidth(width) // full terminal width, no border offset
+	a.header.SetActiveTab(int(a.activeView))
+	a.header.SetCategoryName(a.getCategoryName())
+	a.header.SetCurrentViewType(a.getViewTypeString())
+
+	// Set category tabs data in header for InfoPaneView
+	categories := []string{}
+	resourceTabs := [][]string{}
+	for _, cat := range components.Categories {
+		categories = append(categories, cat.Name)
+		resourceTabs = append(resourceTabs, cat.Resources)
+	}
+	a.header.SetCategories(categories)
+	a.header.SetResourceTabs(resourceTabs)
+	a.header.SetActiveCategory(a.categoryTabs.ActiveCategory())
+	a.header.SetActiveResourceIdx(a.categoryTabs.ActiveResourceIndex())
+
+	// Use cached header if dirty flag hasn't changed
+	headerBox := a.cachedHeader
+	if a.lastRenderedHeader != a.headerDirtyFlag || headerBox == "" {
+		var headerLines []string
+		infoPaneLines := strings.Split(a.header.InfoPaneView(), "\n")
+		for _, line := range infoPaneLines {
+			headerLines = append(headerLines, padLineWithBackground(line, width))
+		}
+		headerBox = strings.Join(headerLines, "\n")
+		a.cachedHeader = headerBox
+		a.lastRenderedHeader = a.headerDirtyFlag
+	}
+
+	// === 2. Command/filter box (conditional, self-bordered) ===
+	commandBox := ""
+	if a.inputMode == ModeCommand {
+		commandBox = a.renderCommandBox(width) + "\n"
+	} else if a.inputMode == ModeFilter {
+		commandBox = a.renderFilterBox(width) + "\n"
+	}
+
+	// === 3. Build body content (table only) ===
+	var bodyContent string
+	if a.isDisconnected {
+		bodyContent = a.renderConnectionError(innerWidth, contentHeight)
+	} else if view, ok := a.views[a.activeView]; ok {
+		view.SetSize(innerWidth, contentHeight)
+		bodyContent = view.View()
+	}
+
+	// Build resource label for the body border: Pods(ns)[25]
+	resourceLabel := a.buildResourceLabel()
+
+	// Wrap body in frame with centered resource label in top border
+	a.frame.SetSize(width, bodyBoxHeight)
+	bodyBox := a.frame.WrapWithCenteredLabel(bodyContent, resourceLabel)
+
+	// === 4. Footer (1 line: loading status + resource name) ===
+	footer := a.renderFooter(width)
+
+	// === 5. Combine all parts ===
+	content := headerBox + "\n" + commandBox + bodyBox + "\n" + footer
+
+	// Overlay dialog if visible
+	if a.dialog.IsVisible() {
+		a.dialog.SetSize(a.width, a.height)
+		content = a.dialog.ViewOverlay(content)
+	}
+
+	// Overlay palette if visible
+	if a.palette.IsVisible() {
+		overlay := a.palette.ViewCentered(a.width, a.height)
+		content = overlay
+	}
+
+	// Overlay namespace picker if visible
+	if a.namespacePicker.IsVisible() {
+		a.namespacePicker.SetSize(a.width, a.height)
+		content = a.namespacePicker.View()
+	}
+
+	// Overlay context picker if visible
+	if a.contextPicker.IsVisible() {
+		a.contextPicker.SetSize(a.width, a.height)
+		content = a.contextPicker.View()
+	}
+
+	// Overlay API resource picker if visible
+	if a.apiResourcePicker.IsVisible() {
+		a.apiResourcePicker.SetSize(a.width, a.height)
+		content = a.apiResourcePicker.View()
+	}
+
+	// Overlay port forward picker if visible (inline, on top of current view)
+	if a.pfPicker.IsVisible() {
+		a.pfPicker.SetSize(a.width, a.height)
+		content = a.pfPicker.ViewOverlay(content)
+	}
+
+	// Overlay toasts
+	if a.toasts.Count() > 0 {
+		a.toasts.SetSize(a.width, a.height)
+		content = a.toasts.ViewOverlay(content)
+	}
+
+	// Ensure exactly height lines of output.
+	// This enables Bubble Tea's line-diff skip optimization (standard_renderer.go:194)
+	// which only activates when len(newLines) <= len(oldLines). A stable line count
+	// means the renderer can skip unchanged header/footer lines during scrolling.
+	content = a.normalizeLineCount(content, height, width)
+
+	return content
+}
+
+// getCategoryName returns the current category name
+func (a *App) getCategoryName() string {
+	for _, cat := range components.Categories {
+		for _, vt := range cat.ViewTypes {
+			if a.activeView == ViewType(vt) {
+				return cat.Name
+			}
+		}
+	}
+	return "Workloads"
+}
+
+// getViewTypeString returns the view type as a string for status bar hints
+func (a *App) getViewTypeString() string {
+	switch a.activeView {
+	case ViewPods:
+		return "pods"
+	case ViewDeployments:
+		return "deployments"
+	case ViewServices:
+		return "services"
+	case ViewConfigMaps:
+		return "configmaps"
+	case ViewSecrets:
+		return "secrets"
+	case ViewIngresses:
+		return "ingresses"
+	case ViewPVCs:
+		return "pvcs"
+	case ViewStatefulSets:
+		return "statefulsets"
+	case ViewNodes:
+		return "nodes"
+	case ViewEvents:
+		return "events"
+	case ViewReplicaSets:
+		return "replicasets"
+	case ViewDaemonSets:
+		return "daemonsets"
+	case ViewJobs:
+		return "jobs"
+	case ViewCronJobs:
+		return "cronjobs"
+	case ViewContainers:
+		return "containers"
+	case ViewGenericResource:
+		if a.genericView != nil {
+			return a.genericView.ResourceKind()
+		}
+		return "resources"
+	case ViewHPAs:
+		return "horizontalpodautoscalers"
+	case ViewPVs:
+		return "persistentvolumes"
+	case ViewRoleBindings:
+		return "rolebindings"
+	case ViewHealth:
+		return "health"
+	case ViewPulse:
+		return "pulse"
+	case ViewHelmReleases:
+		return "helmreleases"
+	case ViewHelmHistory:
+		return "helmhistory"
+	case ViewHelmValues:
+		return "helmvalues"
+	case ViewHelmManifest:
+		return "helmmanifest"
+	case ViewSecretDecode:
+		return "secretdecode"
+	case ViewHelp:
+		return "help"
+	case ViewPortForwards:
+		return "portforwards"
+	case ViewXray:
+		return "xray"
+	default:
+		return "default"
+	}
+}
+
+// getViewKind returns the singular Kind name for the current active view.
+func (a *App) getViewKind() string {
+	switch a.activeView {
+	case ViewPods:
+		return "Pod"
+	case ViewDeployments:
+		return "Deployment"
+	case ViewServices:
+		return "Service"
+	case ViewConfigMaps:
+		return "ConfigMap"
+	case ViewSecrets:
+		return "Secret"
+	case ViewIngresses:
+		return "Ingress"
+	case ViewPVCs:
+		return "PersistentVolumeClaim"
+	case ViewStatefulSets:
+		return "StatefulSet"
+	case ViewNodes:
+		return "Node"
+	case ViewEvents:
+		return "Event"
+	case ViewReplicaSets:
+		return "ReplicaSet"
+	case ViewDaemonSets:
+		return "DaemonSet"
+	case ViewJobs:
+		return "Job"
+	case ViewCronJobs:
+		return "CronJob"
+	case ViewHPAs:
+		return "HorizontalPodAutoscaler"
+	case ViewPVs:
+		return "PersistentVolume"
+	case ViewRoleBindings:
+		return "RoleBinding"
+	case ViewHelmReleases:
+		return "HelmRelease"
+	case ViewGenericResource:
+		if a.genericView != nil {
+			return a.genericView.KindName()
+		}
+		return "Resource"
+	default:
+		return "Resource"
+	}
+}
+
+// renderConnectionError renders an error message when not connected to a cluster
+func (a *App) renderConnectionError(width, height int) string {
+	// Ensure minimum dimensions
+	if width < 20 {
+		width = 20
+	}
+	if height < 5 {
+		height = 5
+	}
+
+	// Background style for padding
+	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+
+	// Build error message lines
+	errorIcon := theme.Styles.StatusError.Render("✗")
+	title := theme.Styles.StatusError.Bold(true).Render("Connection Error")
+
+	// Error message - safely truncate
+	msg := a.connectionError
+	maxMsgLen := width - 10
+	if maxMsgLen < 10 {
+		maxMsgLen = 10
+	}
+	if len(msg) > maxMsgLen {
+		msg = msg[:maxMsgLen-3] + "..."
+	}
+	errorMsg := theme.Styles.StatusUnknown.Render(msg)
+
+	// Help text
+	helpLines := []string{
+		"",
+		theme.Styles.HelpDesc.Render("To fix this issue:"),
+		"",
+		theme.Styles.HelpKey.Render("  1. ") + theme.Styles.Base.Render("Ensure kubectl is installed and configured"),
+		theme.Styles.HelpKey.Render("  2. ") + theme.Styles.Base.Render("Create or check your kubeconfig file at ~/.kube/config"),
+		theme.Styles.HelpKey.Render("  3. ") + theme.Styles.Base.Render("Run: kubectl config view"),
+		theme.Styles.HelpKey.Render("  4. ") + theme.Styles.Base.Render("Restart kview after configuring"),
+		"",
+		theme.Styles.HelpDesc.Render("Press ") + theme.Styles.HelpKey.Render("q") + theme.Styles.HelpDesc.Render(" to quit"),
+	}
+
+	// Build content
+	var lines []string
+
+	// Add some top padding
+	topPadding := (height - len(helpLines) - 4) / 3
+	if topPadding < 0 {
+		topPadding = 0
+	}
+	for i := 0; i < topPadding; i++ {
+		lines = append(lines, "")
+	}
+
+	// Center the content
+	centerPad := (width - 50) / 2
+	if centerPad < 0 {
+		centerPad = 0
+	}
+	padding := bgStyle.Render(strings.Repeat(" ", centerPad))
+
+	lines = append(lines, padding+errorIcon+bgStyle.Render(" ")+title)
+	lines = append(lines, "")
+	lines = append(lines, padding+errorMsg)
+
+	for _, line := range helpLines {
+		lines = append(lines, padding+line)
+	}
+
+	// Fill remaining height
+	for len(lines) < height {
+		lines = append(lines, "")
+	}
+
+	// Truncate to height if needed
+	if len(lines) > height {
+		lines = lines[:height]
+	}
+
+	// Pad each line to width with background color
+	for i, line := range lines {
+		lineWidth := lipgloss.Width(line)
+		if lineWidth < width {
+			// Use background style for padding
+			bgPadding := bgStyle.Render(strings.Repeat(" ", width-lineWidth))
+			lines[i] = line + bgPadding
+		}
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+// renderCommandBox renders the command input inside a bordered box (k9s style)
+func (a *App) renderCommandBox(width int) string {
+	borderStyle := lipgloss.NewStyle().
+		Foreground(theme.ColorFrameBorder).
+		Background(theme.ColorBackground)
+	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+
+	boxInner := width - 2 // space inside the left/right borders
+
+	// Top border
+	top := borderStyle.Render("╭") + borderStyle.Render(strings.Repeat("─", boxInner)) + borderStyle.Render("╮")
+
+	// Content line: border + command input + border
+	cmdContent := a.commandInput.View()
+	cmdWidth := lipgloss.Width(cmdContent)
+	if cmdWidth < boxInner {
+		cmdContent = cmdContent + bgStyle.Render(strings.Repeat(" ", boxInner-cmdWidth))
+	}
+	middle := borderStyle.Render("│") + cmdContent + borderStyle.Render("│")
+
+	// Bottom border
+	bottom := borderStyle.Render("╰") + borderStyle.Render(strings.Repeat("─", boxInner)) + borderStyle.Render("╯")
+
+	return top + "\n" + middle + "\n" + bottom
+}
+
+// renderFilterBox renders the filter input inside a bordered box (same layout as command box, teal border)
+func (a *App) renderFilterBox(width int) string {
+	borderStyle := lipgloss.NewStyle().
+		Foreground(theme.ColorAccent).
+		Background(theme.ColorBackground)
+	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+
+	boxInner := width - 2 // space inside the left/right borders
+
+	// Top border
+	top := borderStyle.Render("╭") + borderStyle.Render(strings.Repeat("─", boxInner)) + borderStyle.Render("╮")
+
+	// Content line: border + filter input + border
+	filterContent := a.searchInput.View()
+	filterWidth := lipgloss.Width(filterContent)
+	if filterWidth < boxInner {
+		filterContent = filterContent + bgStyle.Render(strings.Repeat(" ", boxInner-filterWidth))
+	}
+	middle := borderStyle.Render("│") + filterContent + borderStyle.Render("│")
+
+	// Bottom border
+	bottom := borderStyle.Render("╰") + borderStyle.Render(strings.Repeat("─", boxInner)) + borderStyle.Render("╯")
+
+	return top + "\n" + middle + "\n" + bottom
+}
+
+// buildResourceLabel returns a styled resource label like "Pods(ns)[25]<filter>"
+// for embedding in the body frame's top border
+func (a *App) buildResourceLabel() string {
+	labelStyle := lipgloss.NewStyle().
+		Foreground(theme.ColorHighlight).
+		Background(theme.ColorBackground).
+		Bold(true)
+	mutedStyle := lipgloss.NewStyle().
+		Foreground(theme.ColorMuted).
+		Background(theme.ColorBackground)
+
+	viewName := ViewName(a.activeView)
+	if a.activeView == ViewGenericResource && a.genericView != nil {
+		viewName = a.genericView.Name()
+	}
+	ns := a.namespace
+	if ns == "" {
+		ns = "all"
+	}
+
+	count := ""
+	if view, ok := a.views[a.activeView]; ok {
+		if rc, ok := view.(RowCounter); ok {
+			count = fmt.Sprintf("[%d]", rc.RowCount())
+		}
+	}
+
+	// Check for active filter (k9s-style <filter> indicator)
+	filterText := ""
+	if view, ok := a.views[a.activeView]; ok {
+		if ta, ok := view.(views.TableAccess); ok {
+			filterText = ta.GetTable().GetFilter()
+		}
+	}
+
+	result := labelStyle.Render(viewName) +
+		mutedStyle.Render("("+ns+")") +
+		mutedStyle.Render(count)
+
+	if filterText != "" {
+		display := filterText
+		if len(display) > 20 {
+			display = display[:17] + "..."
+		}
+		filterStyle := lipgloss.NewStyle().
+			Foreground(theme.ColorAccent).
+			Background(theme.ColorBackground)
+		result += filterStyle.Render("<" + display + ">")
+	}
+
+	return result
+}
+
+// renderFooter renders a 1-line footer below the body box
+// Left: resource name (e.g. "Pods")
+// Center: loading status (vanishes when loaded)
+func (a *App) renderFooter(width int) string {
+	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+	labelStyle := lipgloss.NewStyle().
+		Background(theme.ColorBackground).
+		Foreground(theme.ColorHighlight).
+		Bold(true)
+
+	// Left: resource name
+	left := bgStyle.Render(" ") + labelStyle.Render(ViewName(a.activeView))
+	leftWidth := lipgloss.Width(left)
+
+	// Center: footer message (copy confirmation, loading, etc.)
+	center := ""
+	centerWidth := 0
+	if a.footerMessage != "" && time.Now().Before(a.footerExpiresAt) {
+		msgStyle := lipgloss.NewStyle().
+			Background(theme.ColorBackground).
+			Foreground(theme.ColorSuccess)
+		center = msgStyle.Render(a.footerMessage)
+		centerWidth = lipgloss.Width(center)
+	} else if a.loading {
+		loadingStyle := lipgloss.NewStyle().
+			Background(theme.ColorBackground).
+			Foreground(theme.ColorWarning)
+		center = loadingStyle.Render("Loading...")
+		centerWidth = lipgloss.Width(center)
+	}
+
+	// Build line: [left] [pad] [center] [pad]
+	// Center the loading text in the space right of the left label
+	availableForCenter := width - leftWidth
+	leftPad := 0
+	rightPad := 0
+	if centerWidth > 0 {
+		leftPad = (availableForCenter - centerWidth) / 2
+		if leftPad < 0 {
+			leftPad = 0
+		}
+		rightPad = availableForCenter - leftPad - centerWidth
+		if rightPad < 0 {
+			rightPad = 0
+		}
+	} else {
+		rightPad = availableForCenter
+	}
+
+	line := left +
+		bgStyle.Render(strings.Repeat(" ", leftPad)) +
+		center +
+		bgStyle.Render(strings.Repeat(" ", rightPad))
+	return padLineWithBackground(line, width)
+}
+
+// normalizeLineCount ensures the output has exactly targetHeight lines.
+// This enables Bubble Tea's line-diff skip optimization which requires
+// len(newLines) <= len(oldLines) to skip unchanged lines.
+func (a *App) normalizeLineCount(content string, targetHeight, width int) string {
+	lines := strings.Split(content, "\n")
+	if len(lines) < targetHeight {
+		bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+		emptyLine := bgStyle.Render(strings.Repeat(" ", width))
+		for len(lines) < targetHeight {
+			lines = append(lines, emptyLine)
+		}
+	}
+	if len(lines) > targetHeight {
+		lines = lines[:targetHeight]
+	}
+	return strings.Join(lines, "\n")
+}
+
+// padLineWithBackground pads a single line to full width with background
+func padLineWithBackground(line string, width int) string {
+	lineWidth := lipgloss.Width(line)
+	if lineWidth >= width {
+		return line
+	}
+	padding := lipgloss.NewStyle().
+		Background(theme.ColorBackground).
+		Render(strings.Repeat(" ", width-lineWidth))
+	return line + padding
+}

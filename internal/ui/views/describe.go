@@ -1,0 +1,315 @@
+package views
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/bijaya/kview/internal/k8s"
+	"github.com/bijaya/kview/internal/ui/components"
+	"github.com/bijaya/kview/internal/ui/theme"
+)
+
+// DescribeLoadedMsg is sent when description is loaded
+type DescribeLoadedMsg struct {
+	Description string
+	Err         error
+}
+
+// DescribeView displays detailed information about a resource
+type DescribeView struct {
+	BaseView
+	viewport    viewport.Model
+	client      k8s.Client
+	kind        string
+	namespace   string
+	name        string
+	description string
+	loading     bool
+	err         error
+	spinner     *components.Spinner
+}
+
+// NewDescribeView creates a new describe view
+func NewDescribeView(client k8s.Client) *DescribeView {
+	vp := viewport.New(80, 20)
+	vp.Style = theme.Styles.Base
+
+	return &DescribeView{
+		viewport: vp,
+		client:   client,
+		spinner:  components.NewSpinner(),
+	}
+}
+
+// SetClient sets a new k8s client
+func (v *DescribeView) SetClient(client k8s.Client) {
+	v.client = client
+}
+
+// SetResource sets the resource to describe
+func (v *DescribeView) SetResource(kind, namespace, name string) {
+	v.kind = kind
+	v.namespace = namespace
+	v.name = name
+}
+
+// Init initializes the view
+func (v *DescribeView) Init() tea.Cmd {
+	if v.name == "" {
+		return nil
+	}
+	return v.Refresh()
+}
+
+// Update handles messages
+func (v *DescribeView) Update(msg tea.Msg) (View, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case DescribeLoadedMsg:
+		v.loading = false
+		v.spinner.Hide()
+		if msg.Err != nil {
+			v.err = msg.Err
+		} else {
+			v.err = nil
+			v.description = msg.Description
+			v.viewport.SetContent(v.description)
+			v.viewport.GotoTop()
+		}
+
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, theme.DefaultKeyMap().Escape):
+			return v, func() tea.Msg {
+				return GoBackMsg{}
+			}
+
+		case key.Matches(msg, theme.DefaultKeyMap().Refresh):
+			return v, v.Refresh()
+
+		case msg.String() == "G":
+			v.viewport.GotoBottom()
+
+		case msg.String() == "g":
+			v.viewport.GotoTop()
+
+		default:
+			// Let viewport handle scrolling keys (up/down/pgup/pgdn)
+			var cmd tea.Cmd
+			v.viewport, cmd = v.viewport.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			return v, tea.Batch(cmds...)
+		}
+	}
+
+	// Update spinner
+	if v.loading {
+		var cmd tea.Cmd
+		v.spinner, cmd = v.spinner.Update(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+
+	// Update viewport for non-key messages
+	var cmd tea.Cmd
+	v.viewport, cmd = v.viewport.Update(msg)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+
+	return v, tea.Batch(cmds...)
+}
+
+// View renders the view
+func (v *DescribeView) View() string {
+	if v.name == "" {
+		return theme.Styles.StatusUnknown.Render("No resource selected. Press Escape to go back.")
+	}
+
+	if v.loading {
+		return v.spinner.ViewCentered(v.width, v.height)
+	}
+
+	if v.err != nil {
+		return theme.Styles.StatusError.Render("Error: " + v.err.Error())
+	}
+
+	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+
+	// Header
+	header := theme.Styles.PanelTitle.Render(fmt.Sprintf("Describe: %s/%s/%s", v.kind, v.namespace, v.name))
+
+	// Pad header to full width
+	headerWidth := lipgloss.Width(header)
+	if headerWidth < v.width {
+		header += bgStyle.Render(strings.Repeat(" ", v.width-headerWidth))
+	}
+
+	// Footer with help
+	footer := theme.Styles.Help.Render("↑↓/pgup/pgdn scroll • g/G top/bottom • esc back")
+
+	// Pad footer to full width
+	footerWidth := lipgloss.Width(footer)
+	if footerWidth < v.width {
+		footer += bgStyle.Render(strings.Repeat(" ", v.width-footerWidth))
+	}
+
+	return header + "\n" + v.viewport.View() + "\n" + footer
+}
+
+// Name returns the view name
+func (v *DescribeView) Name() string {
+	return "Describe"
+}
+
+// ShortHelp returns keybindings for help
+func (v *DescribeView) ShortHelp() []key.Binding {
+	return []key.Binding{
+		theme.DefaultKeyMap().Up,
+		theme.DefaultKeyMap().Down,
+		theme.DefaultKeyMap().Escape,
+	}
+}
+
+// SetSize sets the view dimensions
+func (v *DescribeView) SetSize(width, height int) {
+	v.BaseView.SetSize(width, height)
+	v.viewport.Width = width
+	v.viewport.Height = height - 3 // Account for header and footer
+}
+
+// IsLoading returns whether the view is currently loading data
+func (v *DescribeView) IsLoading() bool {
+	return v.loading
+}
+
+// Content returns the current describe text
+func (v *DescribeView) Content() string {
+	return v.description
+}
+
+// Refresh refreshes the resource description
+func (v *DescribeView) Refresh() tea.Cmd {
+	if v.name == "" {
+		return nil
+	}
+
+	v.loading = true
+	v.spinner.SetMessage("Loading resource details...")
+	cmds := []tea.Cmd{v.spinner.Show()}
+
+	cmds = append(cmds, func() tea.Msg {
+		resource, err := v.client.Get(context.Background(), v.kind, v.namespace, v.name)
+		if err != nil {
+			return DescribeLoadedMsg{Err: err}
+		}
+
+		description := formatResource(resource)
+		return DescribeLoadedMsg{Description: description}
+	})
+
+	return tea.Batch(cmds...)
+}
+
+// formatResource formats a resource for display
+func formatResource(r *k8s.Resource) string {
+	var b strings.Builder
+
+	// Basic info
+	b.WriteString(fmt.Sprintf("Name:         %s\n", r.Name))
+	b.WriteString(fmt.Sprintf("Namespace:    %s\n", r.Namespace))
+	b.WriteString(fmt.Sprintf("Kind:         %s\n", r.Kind))
+	b.WriteString(fmt.Sprintf("API Version:  %s\n", r.APIVersion))
+	b.WriteString(fmt.Sprintf("UID:          %s\n", r.UID))
+	b.WriteString("\n")
+
+	// Labels
+	b.WriteString("Labels:\n")
+	if len(r.Labels) == 0 {
+		b.WriteString("  <none>\n")
+	} else {
+		for k, v := range r.Labels {
+			b.WriteString(fmt.Sprintf("  %s=%s\n", k, v))
+		}
+	}
+	b.WriteString("\n")
+
+	// Annotations
+	b.WriteString("Annotations:\n")
+	if len(r.Annotations) == 0 {
+		b.WriteString("  <none>\n")
+	} else {
+		for k, v := range r.Annotations {
+			// Truncate long annotations
+			if len(v) > 100 {
+				v = v[:100] + "..."
+			}
+			b.WriteString(fmt.Sprintf("  %s=%s\n", k, v))
+		}
+	}
+	b.WriteString("\n")
+
+	// Owner References
+	if len(r.OwnerRefs) > 0 {
+		b.WriteString("Owner References:\n")
+		for _, ref := range r.OwnerRefs {
+			b.WriteString(fmt.Sprintf("  %s: %s (UID: %s)\n", ref.Kind, ref.Name, ref.UID))
+		}
+		b.WriteString("\n")
+	}
+
+	// Conditions
+	if len(r.Conditions) > 0 {
+		b.WriteString("Conditions:\n")
+		for _, c := range r.Conditions {
+			b.WriteString(fmt.Sprintf("  Type: %s\n", c.Type))
+			b.WriteString(fmt.Sprintf("    Status: %s\n", c.Status))
+			if c.Reason != "" {
+				b.WriteString(fmt.Sprintf("    Reason: %s\n", c.Reason))
+			}
+			if c.Message != "" {
+				b.WriteString(fmt.Sprintf("    Message: %s\n", c.Message))
+			}
+		}
+		b.WriteString("\n")
+	}
+
+	// Raw JSON (formatted)
+	if r.Raw != nil {
+		b.WriteString("Spec:\n")
+		spec, ok := r.Raw.Object["spec"]
+		if ok {
+			jsonBytes, err := json.MarshalIndent(spec, "  ", "  ")
+			if err == nil {
+				b.WriteString("  " + string(jsonBytes))
+			} else {
+				b.WriteString("  (failed to render spec)")
+			}
+		}
+		b.WriteString("\n\n")
+
+		b.WriteString("Status:\n")
+		status, ok := r.Raw.Object["status"]
+		if ok {
+			jsonBytes, err := json.MarshalIndent(status, "  ", "  ")
+			if err == nil {
+				b.WriteString("  " + string(jsonBytes))
+			} else {
+				b.WriteString("  (failed to render status)")
+			}
+		}
+	}
+
+	return b.String()
+}
