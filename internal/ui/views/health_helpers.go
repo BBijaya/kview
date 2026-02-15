@@ -244,27 +244,19 @@ type nodeCols struct {
 
 func nodeColWidths(width int) nodeCols {
 	c := nodeCols{
+		name:    16,
 		status:  10,
+		roles:   10,
 		cpu:     7,
 		mem:     7,
 		pods:    6,
 		ip:      16,
 		version: 12,
 	}
-	// 2=indicator prefix, 7=column separators (1 space each)
-	fixed := 2 + c.status + c.cpu + c.mem + c.pods + c.ip + c.version + 7
-	remaining := width - fixed
-	if remaining < 20 {
-		remaining = 20
-	}
-	c.name = remaining * 55 / 100
-	c.roles = remaining - c.name
-	if c.name < 12 {
-		c.name = 12
-	}
-	if c.roles < 8 {
-		c.roles = 8
-	}
+	// 2=indicator, 7=gaps
+	widths := []int{c.name, c.status, c.roles, c.cpu, c.mem, c.pods, c.ip, c.version}
+	distributeEqual(widths, width, 2+7)
+	c.name, c.status, c.roles, c.cpu, c.mem, c.pods, c.ip, c.version = widths[0], widths[1], widths[2], widths[3], widths[4], widths[5], widths[6], widths[7]
 	return c
 }
 
@@ -405,10 +397,10 @@ func issueColWidths(width int) issueCols {
 		resource: 22,
 		problem:  10,
 	}
-	// 2=indicator, 2=gaps, 2=severity icon prefix
-	widths := []int{c.severity, c.resource, c.problem}
-	distributeEqual(widths, width, 2+2+2)
-	c.severity, c.resource, c.problem = widths[0], widths[1], widths[2]
+	// 2=indicator, 2=gaps, 3=severity icon prefix (icon + 2 spaces)
+	widths := []int{c.resource, c.severity, c.problem}
+	distributeEqual(widths, width, 2+2+3)
+	c.resource, c.severity, c.problem = widths[0], widths[1], widths[2]
 	return c
 }
 
@@ -425,9 +417,9 @@ func eventColWidths(width int) eventCols {
 		resource:  22,
 		message:   10,
 	}
-	// 2=indicator, 3=gaps, 2=type icon prefix
-	widths := []int{c.ago, c.typeLabel, c.resource, c.message}
-	distributeEqual(widths, width, 2+3+2)
-	c.ago, c.typeLabel, c.resource, c.message = widths[0], widths[1], widths[2], widths[3]
+	// 2=indicator, 3=gaps, 3=type icon prefix (icon + 2 spaces)
+	widths := []int{c.resource, c.ago, c.typeLabel, c.message}
+	distributeEqual(widths, width, 2+3+3)
+	c.resource, c.ago, c.typeLabel, c.message = widths[0], widths[1], widths[2], widths[3]
 	return c
 }
