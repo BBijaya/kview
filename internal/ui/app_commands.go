@@ -23,58 +23,58 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 		}
 		return tea.Quit
 
-	case "pods":
+	case "pods", "pod", "po":
 		return a.switchView(ViewPods)
 
-	case "deployments", "deploy":
+	case "deployments", "deployment", "deploy":
 		return a.switchView(ViewDeployments)
 
-	case "services", "svc":
+	case "services", "service", "svc":
 		return a.switchView(ViewServices)
 
-	case "configmaps", "cm":
+	case "configmaps", "configmap", "cm":
 		return a.switchView(ViewConfigMaps)
 
-	case "secrets", "sec":
+	case "secrets", "secret", "sec":
 		return a.switchView(ViewSecrets)
 
-	case "ingresses", "ing":
+	case "ingresses", "ingress", "ing":
 		return a.switchView(ViewIngresses)
 
-	case "pvcs", "pvc":
+	case "pvcs", "pvc", "persistentvolumeclaim", "persistentvolumeclaims":
 		return a.switchView(ViewPVCs)
 
-	case "statefulsets", "sts":
+	case "statefulsets", "statefulset", "sts":
 		return a.switchView(ViewStatefulSets)
 
-	case "nodes", "no":
+	case "nodes", "node", "no":
 		return a.switchView(ViewNodes)
 
-	case "events", "ev":
+	case "events", "event", "ev":
 		return a.switchView(ViewEvents)
 
-	case "replicasets", "rs":
+	case "replicasets", "replicaset", "rs":
 		return a.switchView(ViewReplicaSets)
 
-	case "daemonsets", "ds":
+	case "daemonsets", "daemonset", "ds":
 		return a.switchView(ViewDaemonSets)
 
-	case "jobs":
+	case "jobs", "job":
 		return a.switchView(ViewJobs)
 
-	case "cronjobs", "cj":
+	case "cronjobs", "cronjob", "cj":
 		return a.switchView(ViewCronJobs)
 
-	case "hpa", "horizontalpodautoscalers":
+	case "hpa", "hpas", "horizontalpodautoscaler", "horizontalpodautoscalers":
 		return a.switchView(ViewHPAs)
 
-	case "pv", "persistentvolumes":
+	case "pv", "pvs", "persistentvolume", "persistentvolumes":
 		return a.switchView(ViewPVs)
 
-	case "rolebindings", "rb":
+	case "rolebindings", "rolebinding", "rb":
 		return a.switchView(ViewRoleBindings)
 
-	case "helm", "helmreleases", "releases", "rel", "hr":
+	case "helm", "helmreleases", "helmrelease", "releases", "release", "rel", "hr":
 		return a.switchView(ViewHelmReleases)
 
 	case "ns", "namespace":
