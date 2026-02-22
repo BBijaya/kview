@@ -38,18 +38,25 @@ type Theme struct {
 	IsDark     bool        `yaml:"isDark"`
 }
 
-// ThemeColors holds the color values for a theme
+// ThemeColors holds the color values for a theme.
+// All fields are optional (omitempty) to allow partial overrides.
 type ThemeColors struct {
-	Primary    string `yaml:"primary"`
-	Secondary  string `yaml:"secondary"`
-	Accent     string `yaml:"accent"`
-	Background string `yaml:"background"`
-	Surface    string `yaml:"surface"`
-	Text       string `yaml:"text"`
-	TextMuted  string `yaml:"textMuted"`
-	Border     string `yaml:"border"`
-	Success    string `yaml:"success"`
-	Warning    string `yaml:"warning"`
-	Error      string `yaml:"error"`
-	Info       string `yaml:"info"`
+	Primary    string `yaml:"primary,omitempty"`
+	Accent     string `yaml:"accent,omitempty"`
+	Background string `yaml:"background,omitempty"`
+	Surface    string `yaml:"surface,omitempty"`
+	Text       string `yaml:"text,omitempty"`
+	Muted      string `yaml:"muted,omitempty"`
+	Border     string `yaml:"border,omitempty"`
+	Highlight  string `yaml:"highlight,omitempty"`
+	Success    string `yaml:"success,omitempty"`
+	Warning    string `yaml:"warning,omitempty"`
+	Error      string `yaml:"error,omitempty"`
+	Info       string `yaml:"info,omitempty"`
+
+	// Optional overrides for derived colors (normally computed from base colors).
+	SelectionBg string `yaml:"selectionBg,omitempty"`
+	SelectionFg string `yaml:"selectionFg,omitempty"`
+	FrameBorder string `yaml:"frameBorder,omitempty"`
+	SurfaceAlt  string `yaml:"surfaceAlt,omitempty"`
 }

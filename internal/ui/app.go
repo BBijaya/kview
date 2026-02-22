@@ -142,6 +142,9 @@ type App struct {
 	connectionError  string
 	isDisconnected   bool
 
+	// Startup warning (e.g., unknown theme name)
+	startupWarning string
+
 	// Selected resource (for cross-view communication)
 	selectedResource *ResourceSelectedMsg
 
@@ -298,6 +301,11 @@ func NewApp(client k8s.Client) *App {
 	return app
 }
 
+// SetStartupWarning sets a warning message to be shown as a toast on Init().
+func (a *App) SetStartupWarning(msg string) {
+	a.startupWarning = msg
+}
+
 // NewAppWithError creates a new application instance with a connection error
 func NewAppWithError(client k8s.Client, errorMsg string) *App {
 	app := NewApp(client)
@@ -337,6 +345,11 @@ func (a *App) Init() tea.Cmd {
 
 	// Start node metrics tick (15s interval)
 	cmds = append(cmds, a.nodeMetricsTickCmd())
+
+	// Show startup warning toast if set (e.g., unknown theme name)
+	if a.startupWarning != "" {
+		cmds = append(cmds, a.toasts.PushWarning("Theme", a.startupWarning))
+	}
 
 	return tea.Batch(cmds...)
 }

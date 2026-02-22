@@ -39,39 +39,49 @@ func defaultPaletteKeyMap() paletteKeyMap {
 	}
 }
 
-// Palette styles
-var paletteStyles = struct {
+// paletteStyles returns computed palette styles from current theme colors.
+// Called lazily so it picks up theme changes from Apply()/ComputeStyles().
+func paletteStylesComputed() struct {
 	Container    lipgloss.Style
 	Input        lipgloss.Style
 	Item         lipgloss.Style
 	SelectedItem lipgloss.Style
 	NoResults    lipgloss.Style
 	Separator    lipgloss.Style
-}{
-	Container: lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#7C3AED")).
-		BorderBackground(theme.ColorBackground).
-		Background(theme.ColorBackground).
-		Padding(0, 1),
-	Input: lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#CDD6F4")).
-		Background(lipgloss.Color("#313244")).
-		Padding(0, 1),
-	Item: lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#CDD6F4")).
-		Background(theme.ColorBackground).
-		Padding(0, 1),
-	SelectedItem: lipgloss.NewStyle().
-		Background(lipgloss.Color("#7C3AED")).
-		Foreground(lipgloss.Color("#CDD6F4")).
-		Padding(0, 1),
-	NoResults: lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6C7086")).
-		Background(theme.ColorBackground),
-	Separator: lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#3D3D5C")).
-		Background(theme.ColorBackground),
+} {
+	return struct {
+		Container    lipgloss.Style
+		Input        lipgloss.Style
+		Item         lipgloss.Style
+		SelectedItem lipgloss.Style
+		NoResults    lipgloss.Style
+		Separator    lipgloss.Style
+	}{
+		Container: lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(theme.ColorPrimary).
+			BorderBackground(theme.ColorBackground).
+			Background(theme.ColorBackground).
+			Padding(0, 1),
+		Input: lipgloss.NewStyle().
+			Foreground(theme.ColorText).
+			Background(theme.ColorSurface).
+			Padding(0, 1),
+		Item: lipgloss.NewStyle().
+			Foreground(theme.ColorText).
+			Background(theme.ColorBackground).
+			Padding(0, 1),
+		SelectedItem: lipgloss.NewStyle().
+			Background(theme.ColorPrimary).
+			Foreground(theme.ColorText).
+			Padding(0, 1),
+		NoResults: lipgloss.NewStyle().
+			Foreground(theme.ColorMuted).
+			Background(theme.ColorBackground),
+		Separator: lipgloss.NewStyle().
+			Foreground(theme.ColorBorder).
+			Background(theme.ColorBackground),
+	}
 }
 
 // Palette is the command palette component
@@ -89,14 +99,14 @@ type Palette struct {
 
 // NewPalette creates a new command palette
 func NewPalette(registry *Registry) *Palette {
-	inputBg := lipgloss.Color("#313244")
+	inputBg := theme.ColorSurface
 	ti := textinput.New()
 	ti.Placeholder = "Type a command..."
 	ti.CharLimit = 100
 	ti.Width = 50
-	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#9399B2")).Background(inputBg)
-	ti.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#CDD6F4")).Background(inputBg)
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#CDD6F4")).Background(inputBg)
+	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(inputBg)
+	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.ColorText).Background(inputBg)
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(theme.ColorText).Background(inputBg)
 	ti.Cursor.Style = lipgloss.NewStyle().Background(inputBg)
 
 	p := &Palette{
@@ -198,21 +208,22 @@ func (p *Palette) View() string {
 		return ""
 	}
 
+	ps := paletteStylesComputed()
 	var b strings.Builder
 
 	// Input box
-	inputStyle := paletteStyles.Input.Width(p.width - 2)
+	inputStyle := ps.Input.Width(p.width - 2)
 	b.WriteString(inputStyle.Render("> " + p.input.View()))
 	b.WriteString("\n")
 
 	// Separator
-	sep := paletteStyles.Separator.Width(p.width - 2).Render(strings.Repeat("─", p.width-2))
+	sep := ps.Separator.Width(p.width - 2).Render(strings.Repeat("─", p.width-2))
 	b.WriteString(sep)
 	b.WriteString("\n")
 
 	// Matches
 	if len(p.matches) == 0 {
-		noResults := paletteStyles.NoResults.Width(p.width - 2).Render("No matching commands")
+		noResults := ps.NoResults.Width(p.width - 2).Render("No matching commands")
 		b.WriteString(noResults)
 	} else {
 		// Calculate visible range
@@ -225,9 +236,9 @@ func (p *Palette) View() string {
 		for i := startIdx; i < endIdx; i++ {
 			cmd := p.matches[i]
 
-			style := paletteStyles.Item
+			style := ps.Item
 			if i == p.cursor {
-				style = paletteStyles.SelectedItem
+				style = ps.SelectedItem
 			}
 
 			// Format: Name (shortcut) - Description
@@ -251,7 +262,7 @@ func (p *Palette) View() string {
 		// Show scroll indicator if there are more items
 		if len(p.matches) > p.maxVisible {
 			b.WriteString("\n")
-			indicator := paletteStyles.NoResults.Width(p.width - 2).
+			indicator := ps.NoResults.Width(p.width - 2).
 				Align(lipgloss.Center).
 				Render("↑↓ " + intToStr(len(p.matches)) + " commands")
 			b.WriteString(indicator)
@@ -259,7 +270,7 @@ func (p *Palette) View() string {
 	}
 
 	// Wrap in container
-	container := paletteStyles.Container.Width(p.width).Render(b.String())
+	container := ps.Container.Width(p.width).Render(b.String())
 	return container
 }
 

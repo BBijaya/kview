@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/bijaya/kview/internal/ui/theme"
 	"github.com/bijaya/kview/internal/ui/views"
 )
 
@@ -312,6 +313,14 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 			return a.goBack()
 		}
 		return a.drillDown(ViewHelp)
+
+	case "themes":
+		names := theme.ThemeNames
+		lines := make([]string, len(names))
+		for i, name := range names {
+			lines[i] = "  " + name
+		}
+		return a.toasts.PushInfo("Themes ("+strconv.Itoa(len(names))+")", strings.Join(lines, "\n"))
 
 	case "api-resources", "ar":
 		return a.showAPIResourcePicker()

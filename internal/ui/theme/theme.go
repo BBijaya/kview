@@ -48,10 +48,10 @@ var Styles = struct {
 	PanelBorder lipgloss.Style
 
 	// Frame styles (k9s-like layout)
-	Frame            lipgloss.Style
-	FrameTitle       lipgloss.Style
-	FrameVersion     lipgloss.Style
-	FrameDivider     lipgloss.Style
+	Frame        lipgloss.Style
+	FrameTitle   lipgloss.Style
+	FrameVersion lipgloss.Style
+	FrameDivider lipgloss.Style
 
 	// TabBar styles (numbered tabs)
 	TabBar           lipgloss.Style
@@ -60,20 +60,20 @@ var Styles = struct {
 	TabBarNumber     lipgloss.Style
 
 	// Command input styles
-	CommandLine      lipgloss.Style
-	CommandPrefix    lipgloss.Style
-	CommandInput     lipgloss.Style
+	CommandLine   lipgloss.Style
+	CommandPrefix lipgloss.Style
+	CommandInput  lipgloss.Style
 
 	// Row indicator
 	RowIndicator     lipgloss.Style
 	RowIndicatorNone lipgloss.Style
 
 	// Compact header
-	HeaderCompact    lipgloss.Style
-	HeaderContext    lipgloss.Style
-	HeaderNamespace  lipgloss.Style
-	HeaderCluster    lipgloss.Style
-	HeaderSeparator  lipgloss.Style
+	HeaderCompact   lipgloss.Style
+	HeaderContext   lipgloss.Style
+	HeaderNamespace lipgloss.Style
+	HeaderCluster   lipgloss.Style
+	HeaderSeparator lipgloss.Style
 
 	// Alternating rows
 	TableRowAlt lipgloss.Style
@@ -85,13 +85,13 @@ var Styles = struct {
 	DividerLine lipgloss.Style
 
 	// Category tabs (two-tier navigation)
-	CategoryRow         lipgloss.Style
-	CategoryItem        lipgloss.Style
-	CategoryItemActive  lipgloss.Style
-	CategoryIndicator   lipgloss.Style
-	ResourceRow         lipgloss.Style
-	ResourceItem        lipgloss.Style
-	ResourceItemActive  lipgloss.Style
+	CategoryRow        lipgloss.Style
+	CategoryItem       lipgloss.Style
+	CategoryItemActive lipgloss.Style
+	CategoryIndicator  lipgloss.Style
+	ResourceRow        lipgloss.Style
+	ResourceItem       lipgloss.Style
+	ResourceItemActive lipgloss.Style
 
 	// Info pane styles (k9s-like top pane)
 	InfoPane       lipgloss.Style
@@ -101,9 +101,9 @@ var Styles = struct {
 	ThinDivider    lipgloss.Style
 
 	// Shortcuts footer
-	ShortcutsBar   lipgloss.Style
-	ShortcutKey    lipgloss.Style
-	ShortcutDesc   lipgloss.Style
+	ShortcutsBar lipgloss.Style
+	ShortcutKey  lipgloss.Style
+	ShortcutDesc lipgloss.Style
 
 	// Row numbers
 	RowNumber lipgloss.Style
@@ -129,379 +129,401 @@ var Styles = struct {
 	// Header enhancements
 	InfoLabelPrefix lipgloss.Style
 	InfoValueNA     lipgloss.Style
-}{
-	Base: lipgloss.NewStyle().
+}{}
+
+// onComputeStylesHooks are callbacks invoked after ComputeStyles() completes.
+// Used by packages that cache theme-derived state (e.g., chroma syntax styles).
+var onComputeStylesHooks []func()
+
+// OnComputeStyles registers a callback to run after ComputeStyles().
+func OnComputeStyles(fn func()) {
+	onComputeStylesHooks = append(onComputeStylesHooks, fn)
+}
+
+func init() {
+	ComputeStyles()
+}
+
+// ComputeStyles rebuilds all Styles from the current Color* variables.
+// Called at init time for defaults, and again from main() after Apply().
+func ComputeStyles() {
+	Styles.Base = lipgloss.NewStyle().
 		Foreground(ColorText).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	Focused: lipgloss.NewStyle().
+	Styles.Focused = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
-		Bold(true),
+		Bold(true)
 
-	Selected: lipgloss.NewStyle().
+	Styles.Selected = lipgloss.NewStyle().
 		Background(ColorPrimary).
-		Foreground(ColorText),
+		Foreground(ColorText)
 
-	Header: lipgloss.NewStyle().
+	Styles.Header = lipgloss.NewStyle().
 		Background(ColorPrimary).
 		Foreground(ColorText).
 		Padding(0, 1).
-		Bold(true),
+		Bold(true)
 
-	StatusBar: lipgloss.NewStyle().
+	Styles.StatusBar = lipgloss.NewStyle().
 		Background(ColorSurface).
 		Foreground(ColorMuted).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	TableHeader: lipgloss.NewStyle().
+	Styles.TableHeader = lipgloss.NewStyle().
 		Foreground(ColorAccent).
 		Background(ColorBackground).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	TableRow: lipgloss.NewStyle().
+	Styles.TableRow = lipgloss.NewStyle().
 		Foreground(ColorText).
 		Background(ColorBackground).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	TableRowSelected: lipgloss.NewStyle().
+	Styles.TableRowSelected = lipgloss.NewStyle().
 		Background(ColorPrimary).
 		Foreground(ColorText).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	StatusHealthy: lipgloss.NewStyle().
+	Styles.StatusHealthy = lipgloss.NewStyle().
 		Foreground(ColorSuccess).
-		Bold(true),
+		Bold(true)
 
-	StatusWarning: lipgloss.NewStyle().
+	Styles.StatusWarning = lipgloss.NewStyle().
 		Foreground(ColorWarning).
-		Bold(true),
+		Bold(true)
 
-	StatusError: lipgloss.NewStyle().
+	Styles.StatusError = lipgloss.NewStyle().
 		Foreground(ColorError).
-		Bold(true),
+		Bold(true)
 
-	StatusPending: lipgloss.NewStyle().
+	Styles.StatusPending = lipgloss.NewStyle().
 		Foreground(ColorInfo).
-		Bold(true),
+		Bold(true)
 
-	StatusUnknown: lipgloss.NewStyle().
-		Foreground(ColorMuted),
+	Styles.StatusUnknown = lipgloss.NewStyle().
+		Foreground(ColorMuted)
 
-	Tab: lipgloss.NewStyle().
+	Styles.Tab = lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Padding(0, 2),
+		Padding(0, 2)
 
-	TabActive: lipgloss.NewStyle().
+	Styles.TabActive = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Background(ColorSurface).
 		Padding(0, 2).
-		Bold(true),
+		Bold(true)
 
-	Dialog: lipgloss.NewStyle().
+	Styles.Dialog = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorBorder).
-		Padding(1, 2),
+		Padding(1, 2)
 
-	DialogTitle: lipgloss.NewStyle().
+	Styles.DialogTitle = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Bold(true).
-		MarginBottom(1),
+		MarginBottom(1)
 
-	Input: lipgloss.NewStyle().
+	Styles.Input = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(ColorBorder).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	InputFocused: lipgloss.NewStyle().
+	Styles.InputFocused = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(ColorPrimary).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	Help: lipgloss.NewStyle().
+	Styles.Help = lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	HelpKey: lipgloss.NewStyle().
+	Styles.HelpKey = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	HelpDesc: lipgloss.NewStyle().
+	Styles.HelpDesc = lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	PaletteContainer: lipgloss.NewStyle().
+	Styles.PaletteContainer = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPrimary).
 		Padding(0, 1).
-		Width(60),
+		Width(60)
 
-	PaletteInput: lipgloss.NewStyle().
+	Styles.PaletteInput = lipgloss.NewStyle().
 		Foreground(ColorText).
 		Background(ColorSurface).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	PaletteItem: lipgloss.NewStyle().
+	Styles.PaletteItem = lipgloss.NewStyle().
 		Foreground(ColorText).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	PaletteSelected: lipgloss.NewStyle().
+	Styles.PaletteSelected = lipgloss.NewStyle().
 		Background(ColorPrimary).
 		Foreground(ColorText).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	Panel: lipgloss.NewStyle().
+	Styles.Panel = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder),
+		BorderForeground(ColorBorder)
 
-	PanelTitle: lipgloss.NewStyle().
+	Styles.PanelTitle = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Background(ColorBackground).
-		Bold(true),
+		Bold(true)
 
-	PanelBorder: lipgloss.NewStyle().
+	Styles.PanelBorder = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder),
+		BorderForeground(ColorBorder)
 
 	// Frame styles (k9s-like layout)
-	Frame: lipgloss.NewStyle().
+	Styles.Frame = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder),
+		BorderForeground(ColorBorder)
 
-	FrameTitle: lipgloss.NewStyle().
+	Styles.FrameTitle = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
-		Bold(true),
+		Bold(true)
 
-	FrameVersion: lipgloss.NewStyle().
-		Foreground(ColorMuted),
+	Styles.FrameVersion = lipgloss.NewStyle().
+		Foreground(ColorMuted)
 
-	FrameDivider: lipgloss.NewStyle().
+	Styles.FrameDivider = lipgloss.NewStyle().
 		Foreground(ColorBorder).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
 	// TabBar styles (numbered tabs)
-	TabBar: lipgloss.NewStyle().
-		Background(ColorSurface),
+	Styles.TabBar = lipgloss.NewStyle().
+		Background(ColorSurface)
 
-	TabBarItem: lipgloss.NewStyle().
+	Styles.TabBarItem = lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	TabBarItemActive: lipgloss.NewStyle().
+	Styles.TabBarItemActive = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Background(ColorSurface).
 		Bold(true).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	TabBarNumber: lipgloss.NewStyle().
+	Styles.TabBarNumber = lipgloss.NewStyle().
 		Foreground(ColorPrimary).
 		Background(ColorBackground).
-		Bold(true),
+		Bold(true)
 
 	// Command input styles
-	CommandLine: lipgloss.NewStyle().
+	Styles.CommandLine = lipgloss.NewStyle().
 		Background(ColorBackground).
-		Foreground(ColorText),
+		Foreground(ColorText)
 
-	CommandPrefix: lipgloss.NewStyle().
+	Styles.CommandPrefix = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Background(ColorBackground).
-		Bold(true),
+		Bold(true)
 
-	CommandInput: lipgloss.NewStyle().
+	Styles.CommandInput = lipgloss.NewStyle().
 		Foreground(ColorText).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
 	// Row indicator
-	RowIndicator: lipgloss.NewStyle().
+	Styles.RowIndicator = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Background(ColorBackground).
-		Bold(true),
+		Bold(true)
 
-	RowIndicatorNone: lipgloss.NewStyle().
+	Styles.RowIndicatorNone = lipgloss.NewStyle().
 		Foreground(ColorSurface).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
 	// Compact header
-	HeaderCompact: lipgloss.NewStyle().
+	Styles.HeaderCompact = lipgloss.NewStyle().
 		Background(ColorPrimary).
 		Foreground(ColorText).
 		Padding(0, 1).
-		Bold(true),
+		Bold(true)
 
-	HeaderContext: lipgloss.NewStyle().
+	Styles.HeaderContext = lipgloss.NewStyle().
 		Foreground(ColorAccent).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	HeaderNamespace: lipgloss.NewStyle().
+	Styles.HeaderNamespace = lipgloss.NewStyle().
 		Foreground(ColorWarning).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	HeaderCluster: lipgloss.NewStyle().
+	Styles.HeaderCluster = lipgloss.NewStyle().
 		Foreground(ColorInfo).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	HeaderSeparator: lipgloss.NewStyle().
+	Styles.HeaderSeparator = lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
 	// Alternating row
-	TableRowAlt: lipgloss.NewStyle().
+	Styles.TableRowAlt = lipgloss.NewStyle().
 		Foreground(ColorText).
 		Background(ColorSurfaceAlt).
-		Padding(0, 1),
+		Padding(0, 1)
 
 	// Content area (solid background for filling empty space)
-	ContentArea: lipgloss.NewStyle().
-		Background(ColorBackground),
+	Styles.ContentArea = lipgloss.NewStyle().
+		Background(ColorBackground)
 
 	// Divider line with background
-	DividerLine: lipgloss.NewStyle().
+	Styles.DividerLine = lipgloss.NewStyle().
 		Foreground(ColorBorder).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
 	// Category tabs (two-tier navigation)
-	CategoryRow: lipgloss.NewStyle().
-		Background(ColorSurface),
+	Styles.CategoryRow = lipgloss.NewStyle().
+		Background(ColorSurface)
 
-	CategoryItem: lipgloss.NewStyle().
+	Styles.CategoryItem = lipgloss.NewStyle().
 		Foreground(ColorMuted).
 		Background(ColorBackground).
-		Padding(0, 2),
+		Padding(0, 2)
 
-	CategoryItemActive: lipgloss.NewStyle().
+	Styles.CategoryItemActive = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Background(ColorBackground).
 		Bold(true).
-		Padding(0, 2),
+		Padding(0, 2)
 
-	CategoryIndicator: lipgloss.NewStyle().
+	Styles.CategoryIndicator = lipgloss.NewStyle().
 		Foreground(ColorAccent).
 		Background(ColorBackground).
-		Bold(true),
+		Bold(true)
 
-	ResourceRow: lipgloss.NewStyle().
-		Background(ColorBackground),
+	Styles.ResourceRow = lipgloss.NewStyle().
+		Background(ColorBackground)
 
-	ResourceItem: lipgloss.NewStyle().
+	Styles.ResourceItem = lipgloss.NewStyle().
 		Foreground(ColorMuted).
 		Background(ColorBackground).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	ResourceItemActive: lipgloss.NewStyle().
+	Styles.ResourceItemActive = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Background(ColorSurface).
 		Bold(true).
-		Padding(0, 1),
+		Padding(0, 1)
 
 	// Info pane styles (k9s-like top pane)
-	InfoPane: lipgloss.NewStyle().
-		Background(ColorBackground),
+	Styles.InfoPane = lipgloss.NewStyle().
+		Background(ColorBackground)
 
-	InfoLabel: lipgloss.NewStyle().
+	Styles.InfoLabel = lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	InfoValue: lipgloss.NewStyle().
+	Styles.InfoValue = lipgloss.NewStyle().
 		Foreground(ColorAccent).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	InfoValueMuted: lipgloss.NewStyle().
+	Styles.InfoValueMuted = lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	ThinDivider: lipgloss.NewStyle().
+	Styles.ThinDivider = lipgloss.NewStyle().
 		Foreground(ColorBorder).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
 	// Shortcuts footer
-	ShortcutsBar: lipgloss.NewStyle().
+	Styles.ShortcutsBar = lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	ShortcutKey: lipgloss.NewStyle().
+	Styles.ShortcutKey = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
-	ShortcutDesc: lipgloss.NewStyle().
+	Styles.ShortcutDesc = lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Background(ColorBackground),
+		Background(ColorBackground)
 
 	// Row numbers
-	RowNumber: lipgloss.NewStyle().
+	Styles.RowNumber = lipgloss.NewStyle().
 		Foreground(ColorRowNumber).
 		Background(ColorBackground).
 		Align(lipgloss.Right).
-		PaddingRight(1),
+		PaddingRight(1)
 
 	// Status cell styles (no special background — use main background)
-	StatusCellHealthy: lipgloss.NewStyle().
+	Styles.StatusCellHealthy = lipgloss.NewStyle().
 		Background(ColorBackground).
-		Foreground(ColorSuccess),
+		Foreground(ColorSuccess)
 
-	StatusCellWarning: lipgloss.NewStyle().
+	Styles.StatusCellWarning = lipgloss.NewStyle().
 		Background(ColorBackground).
-		Foreground(ColorWarning),
+		Foreground(ColorWarning)
 
-	StatusCellError: lipgloss.NewStyle().
+	Styles.StatusCellError = lipgloss.NewStyle().
 		Background(ColorBackground).
-		Foreground(ColorError),
+		Foreground(ColorError)
 
-	StatusCellPending: lipgloss.NewStyle().
+	Styles.StatusCellPending = lipgloss.NewStyle().
 		Background(ColorBackground).
-		Foreground(ColorInfo),
+		Foreground(ColorInfo)
 
 	// Selection states
-	TableRowSelectedFocused: lipgloss.NewStyle().
+	Styles.TableRowSelectedFocused = lipgloss.NewStyle().
 		Background(ColorSelectionBg).
 		Foreground(ColorSelectionFg).
 		Bold(true).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	TableRowSelectedBlurred: lipgloss.NewStyle().
+	Styles.TableRowSelectedBlurred = lipgloss.NewStyle().
 		Background(ColorSurface).
 		Foreground(ColorMuted).
-		Padding(0, 1),
+		Padding(0, 1)
 
-	RowIndicatorFocused: lipgloss.NewStyle().
+	Styles.RowIndicatorFocused = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Background(ColorSelectionBg).
-		Bold(true),
+		Bold(true)
 
-	RowIndicatorBlurred: lipgloss.NewStyle().
+	Styles.RowIndicatorBlurred = lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Background(ColorSurface),
+		Background(ColorSurface)
 
 	// Empty states
-	EmptyStateIcon: lipgloss.NewStyle().
+	Styles.EmptyStateIcon = lipgloss.NewStyle().
 		Foreground(ColorMuted).
 		Background(ColorBackground).
-		Align(lipgloss.Center),
+		Align(lipgloss.Center)
 
-	EmptyStateTitle: lipgloss.NewStyle().
+	Styles.EmptyStateTitle = lipgloss.NewStyle().
 		Foreground(ColorText).
 		Background(ColorBackground).
 		Bold(true).
-		Align(lipgloss.Center),
+		Align(lipgloss.Center)
 
-	EmptyStateMessage: lipgloss.NewStyle().
+	Styles.EmptyStateMessage = lipgloss.NewStyle().
 		Foreground(ColorMuted).
 		Background(ColorBackground).
-		Align(lipgloss.Center),
+		Align(lipgloss.Center)
 
-	EmptyStateHint: lipgloss.NewStyle().
+	Styles.EmptyStateHint = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
 		Background(ColorBackground).
 		Italic(true).
-		Align(lipgloss.Center),
+		Align(lipgloss.Center)
 
 	// Header enhancements
-	InfoLabelPrefix: lipgloss.NewStyle().
+	Styles.InfoLabelPrefix = lipgloss.NewStyle().
 		Foreground(ColorLabelPrefix).
 		Background(ColorBackground).
-		Bold(true),
+		Bold(true)
 
-	InfoValueNA: lipgloss.NewStyle().
+	Styles.InfoValueNA = lipgloss.NewStyle().
 		Foreground(ColorNAValue).
 		Background(ColorBackground).
-		Italic(true),
+		Italic(true)
+
+	// Notify registered hooks (e.g., chroma style rebuild).
+	for _, fn := range onComputeStylesHooks {
+		fn()
+	}
 }
