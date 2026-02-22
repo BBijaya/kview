@@ -106,6 +106,40 @@ func (v *NamespaceSelectView) Update(msg tea.Msg) (View, tea.Cmd) {
 				}
 			}
 
+		case key.Matches(msg, theme.DefaultKeyMap().Describe):
+			if row := v.table.SelectedRow(); row != nil {
+				if row.ID == "" {
+					return v, func() tea.Msg {
+						return ShowToastMsg{Title: "Describe", Message: "\"all\" is a virtual entry, not a real namespace"}
+					}
+				}
+				name := row.ID
+				return v, func() tea.Msg {
+					return OpenViewMsg{
+						TargetView: theme.ViewDescribe,
+						Kind: "Namespace", Resource: "namespaces", Namespace: "",
+						Name: name,
+					}
+				}
+			}
+
+		case key.Matches(msg, theme.DefaultKeyMap().YAML):
+			if row := v.table.SelectedRow(); row != nil {
+				if row.ID == "" {
+					return v, func() tea.Msg {
+						return ShowToastMsg{Title: "YAML", Message: "\"all\" is a virtual entry, not a real namespace"}
+					}
+				}
+				name := row.ID
+				return v, func() tea.Msg {
+					return OpenViewMsg{
+						TargetView: theme.ViewYAML,
+						Kind: "Namespace", Resource: "namespaces", Namespace: "",
+						Name: name,
+					}
+				}
+			}
+
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			return v, func() tea.Msg {
 				return GoBackMsg{}
