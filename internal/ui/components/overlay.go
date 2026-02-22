@@ -42,9 +42,17 @@ func Overlay(box, background string, padLeft, padTop, screenWidth, screenHeight 
 			if leftWidth < padLeft {
 				left += bgStyle.Render(strings.Repeat(" ", padLeft-leftWidth))
 			}
+			// Normalize overlay line to exactly boxWidth (mirrors left normalization)
+			overlayLine := boxLines[overlayIdx]
+			overlayWidth := lipgloss.Width(overlayLine)
+			if overlayWidth < boxWidth {
+				overlayLine += bgStyle.Render(strings.Repeat(" ", boxWidth-overlayWidth))
+			} else if overlayWidth > boxWidth {
+				overlayLine = ansiTruncateClean(overlayLine, boxWidth)
+			}
 			// Right: keep background content after padLeft+boxWidth
 			right := ansiSkipLeft(bgLine, padLeft+boxWidth)
-			line := left + boxLines[overlayIdx] + right
+			line := left + overlayLine + right
 			// Normalize width to prevent Bubble Tea re-render artifacts
 			lineWidth := lipgloss.Width(line)
 			if lineWidth < screenWidth {

@@ -152,7 +152,28 @@ func (t *ToastStack) View() string {
 		toastViews = append(toastViews, t.renderToast(toast, toastWidth))
 	}
 
-	return strings.Join(toastViews, "\n")
+	box := strings.Join(toastViews, "\n")
+
+	// Normalize all lines to the same width so the Overlay function
+	// can position right-side background content at the correct column.
+	// Lipgloss should produce consistent widths, but Unicode ambiguous-width
+	// characters (icons ✓/⚠/✗/ℹ) can cause per-line discrepancies between
+	// what lipgloss.Width reports and what the terminal renders.
+	lines := strings.Split(box, "\n")
+	maxWidth := 0
+	for _, line := range lines {
+		if w := lipgloss.Width(line); w > maxWidth {
+			maxWidth = w
+		}
+	}
+	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+	for i, line := range lines {
+		if w := lipgloss.Width(line); w < maxWidth {
+			lines[i] = line + bgStyle.Render(strings.Repeat(" ", maxWidth-w))
+		}
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // ViewOverlay composites the toast stack onto background in the bottom-right.
@@ -195,15 +216,19 @@ func (t *ToastStack) renderToast(toast Toast, width int) string {
 	toastStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
+		BorderBackground(theme.ColorBackground).
+		Background(theme.ColorBackground).
 		Padding(0, 1).
 		Width(width)
 
 	titleStyle := lipgloss.NewStyle().
 		Foreground(borderColor).
+		Background(theme.ColorBackground).
 		Bold(true)
 
 	messageStyle := lipgloss.NewStyle().
-		Foreground(theme.ColorText)
+		Foreground(theme.ColorText).
+		Background(theme.ColorBackground)
 
 	// Build content
 	var content strings.Builder

@@ -323,9 +323,10 @@ func (p *PortForwardPicker) renderBox() string {
 	innerWidth := overlayWidth - 2 // subtract border columns
 
 	// Scale address input width to use available space
-	addrWidth := overlayWidth - 22 // label "Address:        " is ~16 + padding
-	if addrWidth < 20 {
-		addrWidth = 20
+	// Budget: label(15) + space(1) + prompt(2) + input(addrWidth) + cursor(1) = pad = innerWidth - 2
+	addrWidth := overlayWidth - 23
+	if addrWidth < 15 {
+		addrWidth = 15
 	}
 	p.addressInput.Width = addrWidth
 
@@ -351,12 +352,14 @@ func (p *PortForwardPicker) renderBox() string {
 		borderChar(strings.Repeat("─", rightDashes)) +
 		borderChar("╮")
 
-	// Build content lines (each padded to innerWidth with bg)
+	// Build content lines (each normalized to exactly pad visible chars)
 	padContent := func(line string) string {
 		w := lipgloss.Width(line)
 		pad := innerWidth - 2 // inner padding (1 each side)
 		if w < pad {
 			line += bgStyle.Render(strings.Repeat(" ", pad-w))
+		} else if w > pad {
+			line = ansiTruncateClean(line, pad)
 		}
 		return borderChar("│") + bgStyle.Render(" ") + line + bgStyle.Render(" ") + borderChar("│")
 	}
@@ -400,7 +403,7 @@ func (p *PortForwardPicker) renderBox() string {
 	fields := []field{
 		{portLabel, p.containerPortInput.View()},
 		{"Local Port:    ", p.localPortInput.View()},
-		{"Address:        ", p.addressInput.View()},
+		{"Address:       ", p.addressInput.View()},
 	}
 
 	for i, f := range fields {
