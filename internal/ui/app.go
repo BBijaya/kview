@@ -107,6 +107,9 @@ type App struct {
 	pfPicker  *components.PortForwardPicker
 	pfView    *views.PortForwardsView
 
+	// Scaling
+	scalePicker *components.ScalePicker
+
 	// State
 	statusMessage    string
 	statusIsError    bool
@@ -210,6 +213,9 @@ func NewApp(client k8s.Client) *App {
 	app.pfPicker = components.NewPortForwardPicker()
 	app.pfView = views.NewPortForwardsView(app.pfManager)
 	app.views[ViewPortForwards] = app.pfView
+
+	// Initialize scale picker
+	app.scalePicker = components.NewScalePicker()
 
 	// Initialize special views
 	app.describeView = views.NewDescribeView(client)

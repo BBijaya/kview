@@ -11,6 +11,7 @@ import (
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/bijaya/kview/internal/k8s"
@@ -64,6 +65,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if a.pfPicker.IsVisible() {
 			var cmd tea.Cmd
 			a.pfPicker, cmd = a.pfPicker.Update(msg)
+			return a, cmd
+		}
+
+		// Handle scale picker
+		if a.scalePicker.IsVisible() {
+			var cmd tea.Cmd
+			a.scalePicker, cmd = a.scalePicker.Update(msg)
 			return a, cmd
 		}
 
@@ -721,6 +729,26 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case components.PortForwardPickerCancelMsg:
 		// No-op
+		return a, nil
+
+	case views.ScalePickerMsg:
+		a.scalePicker.Show(msg.Namespace, msg.Name, msg.Kind, msg.CurrentReplicas)
+		return a, textinput.Blink
+
+	case components.ScalePickerConfirmMsg:
+		kind := msg.Kind
+		ns := msg.Namespace
+		name := msg.Name
+		replicas := msg.Replicas
+		return a, func() tea.Msg {
+			err := a.client.Scale(context.Background(), kind, ns, name, replicas)
+			if err != nil {
+				return ActionCompletedMsg{Action: "Scaled", Success: false, Message: err.Error()}
+			}
+			return ActionCompletedMsg{Action: "Scaled", Success: true, Message: fmt.Sprintf("%s/%s scaled to %d replicas", ns, name, replicas)}
+		}
+
+	case components.ScalePickerCancelMsg:
 		return a, nil
 
 	case PortForwardStartedMsg:

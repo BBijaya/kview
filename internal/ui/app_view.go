@@ -160,6 +160,12 @@ func (a *App) View() string {
 		content = a.pfPicker.ViewOverlay(content)
 	}
 
+	// Overlay scale picker if visible
+	if a.scalePicker.IsVisible() {
+		a.scalePicker.SetSize(a.width, a.height)
+		content = a.scalePicker.ViewOverlay(content)
+	}
+
 	// Overlay toasts
 	if a.toasts.Count() > 0 {
 		a.toasts.SetSize(a.width, a.height)

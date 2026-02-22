@@ -192,6 +192,23 @@ func (v *StatefulSetsView) Update(msg tea.Msg) (View, tea.Cmd) {
 					}
 				}
 			}
+
+		case key.Matches(msg, theme.DefaultKeyMap().Scale):
+			if row := v.table.SelectedRow(); row != nil {
+				for _, sts := range v.statefulsets {
+					if sts.UID == row.ID {
+						sts := sts
+						return v, func() tea.Msg {
+							return ScalePickerMsg{
+								Namespace:       sts.Namespace,
+								Name:            sts.Name,
+								Kind:            "statefulsets",
+								CurrentReplicas: sts.Replicas,
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -248,6 +265,7 @@ func (v *StatefulSetsView) ShortHelp() []key.Binding {
 		theme.DefaultKeyMap().Filter,
 		theme.DefaultKeyMap().Describe,
 		theme.DefaultKeyMap().Restart,
+		theme.DefaultKeyMap().Scale,
 	}
 }
 

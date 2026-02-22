@@ -26,6 +26,14 @@ type StatusMsg struct {
 	IsError bool
 }
 
+// ScalePickerMsg requests the app to show the scale picker overlay
+type ScalePickerMsg struct {
+	Namespace       string
+	Name            string
+	Kind            string // "deployments" or "statefulsets"
+	CurrentReplicas int32
+}
+
 // deploymentColumns builds the column list for the deployments table.
 // When showNS is true, the NAMESPACE column is prepended.
 func deploymentColumns(showNS bool) []components.Column {
@@ -154,9 +162,13 @@ func (v *DeploymentsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			if row := v.table.SelectedRow(); row != nil {
 				for _, dep := range v.deployments {
 					if dep.UID == row.ID {
+						dep := dep
 						return v, func() tea.Msg {
-							return StatusMsg{
-								Message: fmt.Sprintf("Scale %s (replicas=%d): use :scale %s <count>", dep.Name, dep.Replicas, dep.Name),
+							return ScalePickerMsg{
+								Namespace:       dep.Namespace,
+								Name:            dep.Name,
+								Kind:            "deployments",
+								CurrentReplicas: dep.Replicas,
 							}
 						}
 					}
