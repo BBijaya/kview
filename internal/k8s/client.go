@@ -296,20 +296,28 @@ func (c *K8sClient) Restart(ctx context.Context, kind, namespace, name string) e
 	return err
 }
 
-// Scale scales a deployment
+// Scale scales a deployment or statefulset
 func (c *K8sClient) Scale(ctx context.Context, kind, namespace, name string, replicas int) error {
-	if kind != "deployments" && kind != "deployment" {
-		return fmt.Errorf("scale is only supported for deployments")
-	}
-
-	scale, err := c.clientset.AppsV1().Deployments(namespace).GetScale(ctx, name, metav1.GetOptions{})
-	if err != nil {
+	switch kind {
+	case "deployments", "deployment":
+		scale, err := c.clientset.AppsV1().Deployments(namespace).GetScale(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		scale.Spec.Replicas = int32(replicas)
+		_, err = c.clientset.AppsV1().Deployments(namespace).UpdateScale(ctx, name, scale, metav1.UpdateOptions{})
 		return err
+	case "statefulsets", "statefulset":
+		scale, err := c.clientset.AppsV1().StatefulSets(namespace).GetScale(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		scale.Spec.Replicas = int32(replicas)
+		_, err = c.clientset.AppsV1().StatefulSets(namespace).UpdateScale(ctx, name, scale, metav1.UpdateOptions{})
+		return err
+	default:
+		return fmt.Errorf("scale is only supported for deployments and statefulsets")
 	}
-
-	scale.Spec.Replicas = int32(replicas)
-	_, err = c.clientset.AppsV1().Deployments(namespace).UpdateScale(ctx, name, scale, metav1.UpdateOptions{})
-	return err
 }
 
 // Logs returns logs for a pod
