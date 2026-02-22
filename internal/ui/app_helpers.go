@@ -218,6 +218,25 @@ func (a *App) tickCmd() tea.Cmd {
 	})
 }
 
+// loadCommandCompletions fetches namespaces, contexts, and port-forward IDs for command input autocompletion
+func (a *App) loadCommandCompletions() tea.Cmd {
+	return func() tea.Msg {
+		namespaces, _ := a.client.GetNamespaces(context.Background())
+		var contextNames []string
+		if contexts, err := k8s.GetContexts(); err == nil {
+			contextNames = make([]string, len(contexts))
+			for i, c := range contexts {
+				contextNames[i] = c.Name
+			}
+		}
+		var pfIDs []string
+		for _, s := range a.pfManager.ActiveSessions() {
+			pfIDs = append(pfIDs, fmt.Sprintf("%d", s.ID))
+		}
+		return CommandCompletionsMsg{Namespaces: namespaces, Contexts: contextNames, PortForwardIDs: pfIDs}
+	}
+}
+
 // loadNamespaces switches to the namespace select view
 func (a *App) loadNamespaces() tea.Cmd {
 	return a.switchView(ViewNamespaceSelect)

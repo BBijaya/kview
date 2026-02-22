@@ -25,8 +25,11 @@ type CommandInput struct {
 	width      int
 	visible    bool
 	input      textinput.Model
-	commands   []string // Available commands for completion
-	history    []string
+	commands      []string // Available commands for completion
+	namespaces    []string // Dynamic namespace completions
+	contexts      []string // Dynamic context completions
+	pfSessionIDs  []string // Dynamic port-forward session ID completions
+	history       []string
 	historyIdx int
 }
 
@@ -40,22 +43,29 @@ func NewCommandInput() *CommandInput {
 	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.ColorText).Background(theme.ColorBackground)
 	ti.PromptStyle = lipgloss.NewStyle().Background(theme.ColorBackground)
 	ti.Cursor.Style = lipgloss.NewStyle().Background(theme.ColorHighlight)
+	ti.ShowSuggestions = true
+	ti.CompletionStyle = lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(theme.ColorBackground)
 
 	return &CommandInput{
 		width:   80,
 		visible: false,
 		input:   ti,
 		commands: []string{
-			"q", "quit",
-			"delete", "del",
-			"describe", "desc",
-			"logs", "log",
-			"scale",
-			"ns", "namespace",
-			"ctx", "context",
-			"refresh", "r",
-			"help", "h",
-			"pods", "deployments", "services",
+			// Resource views (canonical names first)
+			"api-resources", "configmaps", "cronjobs", "daemonsets", "deployments",
+			"events", "helm", "hpa", "ingresses", "jobs",
+			"nodes", "pods", "portforwards", "pvcs",
+			"replicasets", "rolebindings", "secrets", "services", "statefulsets",
+			// Command-only views (no keybinding equivalent)
+			"diagnosis", "health", "pulse", "timeline", "xray",
+			// Navigation & utility
+			"help", "namespace", "quit", "refresh",
+			// Short aliases
+			"ar", "cj", "cm", "ctx", "deploy", "diag",
+			"ds", "ev", "graph", "h", "hr", "ing",
+			"no", "ns", "pf", "pf-stop", "pv", "pvc", "q",
+			"r", "rb", "rel", "releases", "rs", "sec",
+			"sts", "svc", "tl",
 		},
 		history:    []string{},
 		historyIdx: -1,
@@ -78,7 +88,23 @@ func (c *CommandInput) Show() {
 	c.visible = true
 	c.input.Reset()
 	c.input.Focus()
+	c.input.SetSuggestions(c.commands)
 	c.historyIdx = len(c.history)
+}
+
+// SetNamespaces updates the namespace list for dynamic `:ns` completion
+func (c *CommandInput) SetNamespaces(namespaces []string) {
+	c.namespaces = namespaces
+}
+
+// SetContexts updates the context list for dynamic `:ctx` completion
+func (c *CommandInput) SetContexts(contexts []string) {
+	c.contexts = contexts
+}
+
+// SetPortForwardIDs updates the port-forward session IDs for `:pf-stop` completion
+func (c *CommandInput) SetPortForwardIDs(ids []string) {
+	c.pfSessionIDs = ids
 }
 
 // Hide hides the command input
@@ -142,17 +168,81 @@ func (c *CommandInput) Update(msg tea.Msg) (*CommandInput, tea.Cmd) {
 				c.input.SetValue("")
 			}
 			return c, nil
-
-		case msg.Type == tea.KeyTab:
-			// Tab completion
-			c.completeCommand()
-			return c, nil
 		}
 	}
 
 	var cmd tea.Cmd
 	c.input, cmd = c.input.Update(msg)
+	c.updateDynamicSuggestions()
 	return c, cmd
+}
+
+// xrayKinds are the valid kind aliases for :xray completion (from resolveKindAlias).
+var xrayKinds = []string{
+	"deploy", "pod", "svc", "sts", "ds", "job", "cj", "rs",
+	"cm", "sec", "ing", "pvc", "pv", "hpa", "node",
+}
+
+// updateDynamicSuggestions switches suggestions based on current input prefix.
+func (c *CommandInput) updateDynamicSuggestions() {
+	val := c.input.Value()
+
+	// :ns / :namespace → namespace names (with "all" first)
+	if len(c.namespaces) > 0 {
+		if prefix, ok := matchPrefix(val, "ns ", "namespace "); ok {
+			suggestions := make([]string, 0, len(c.namespaces)+1)
+			suggestions = append(suggestions, prefix+"all")
+			for _, ns := range c.namespaces {
+				suggestions = append(suggestions, prefix+ns)
+			}
+			c.input.SetSuggestions(suggestions)
+			return
+		}
+	}
+
+	// :ctx / :context → context names
+	if len(c.contexts) > 0 {
+		if prefix, ok := matchPrefix(val, "ctx ", "context "); ok {
+			suggestions := make([]string, 0, len(c.contexts))
+			for _, ctx := range c.contexts {
+				suggestions = append(suggestions, prefix+ctx)
+			}
+			c.input.SetSuggestions(suggestions)
+			return
+		}
+	}
+
+	// :xray → kind aliases
+	if strings.HasPrefix(val, "xray ") {
+		suggestions := make([]string, 0, len(xrayKinds))
+		for _, kind := range xrayKinds {
+			suggestions = append(suggestions, "xray "+kind)
+		}
+		c.input.SetSuggestions(suggestions)
+		return
+	}
+
+	// :pf-stop → "all" + active session IDs
+	if strings.HasPrefix(val, "pf-stop ") {
+		suggestions := []string{"pf-stop all"}
+		for _, id := range c.pfSessionIDs {
+			suggestions = append(suggestions, "pf-stop "+id)
+		}
+		c.input.SetSuggestions(suggestions)
+		return
+	}
+
+	c.input.SetSuggestions(c.commands)
+}
+
+// matchPrefix checks if val starts with any of the given prefixes and returns the matched one.
+func matchPrefix(val string, prefixes ...string) (string, bool) {
+	for _, p := range prefixes {
+		if strings.HasPrefix(val, p) {
+			return p, true
+		}
+	}
+	return "", false
 }
 
 // View renders the command input
@@ -202,23 +292,6 @@ func (c *CommandInput) parseCommand(cmd string) tea.Msg {
 	return CommandExecuteMsg{
 		Command: command,
 		Args:    args,
-	}
-}
-
-// completeCommand provides tab completion for commands
-func (c *CommandInput) completeCommand() {
-	current := strings.ToLower(c.input.Value())
-	if current == "" {
-		return
-	}
-
-	// Find first matching command
-	for _, cmd := range c.commands {
-		if strings.HasPrefix(cmd, current) {
-			c.input.SetValue(cmd)
-			c.input.CursorEnd()
-			return
-		}
 	}
 }
 

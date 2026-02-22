@@ -195,6 +195,13 @@ func ViewName(v ViewType) string {
 	}
 }
 
+// CommandCompletionsMsg carries dynamic completion data for the command input
+type CommandCompletionsMsg struct {
+	Namespaces     []string
+	Contexts       []string
+	PortForwardIDs []string
+}
+
 // ContextSwitchedMsg is sent when context switch completes
 type ContextSwitchedMsg struct {
 	Context string

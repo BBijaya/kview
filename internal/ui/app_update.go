@@ -113,7 +113,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.commandInput.Show()
 			a.invalidateHeader()
 			a.updateSizes()
-			return a, nil
+			return a, a.loadCommandCompletions()
 
 		case key.Matches(msg, DefaultKeyMap().Filter):
 			// Enter filter mode (resource list views and log view)
@@ -357,6 +357,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.inputMode = ModeNormal
 		a.invalidateHeader()
 		a.updateSizes()
+		return a, nil
+
+	case CommandCompletionsMsg:
+		a.commandInput.SetNamespaces(msg.Namespaces)
+		a.commandInput.SetContexts(msg.Contexts)
+		a.commandInput.SetPortForwardIDs(msg.PortForwardIDs)
 		return a, nil
 
 	case components.FilterChangedMsg:
