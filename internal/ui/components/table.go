@@ -250,21 +250,44 @@ func (t *Table) ValidateCursor() {
 	}
 }
 
-// SetRows sets the table rows
+// SetRows sets the table rows, preserving cursor position by ID
 func (t *Table) SetRows(rows []Row) {
+	// Save current selection before replacing rows
+	var selectedID string
+	savedCursor := t.cursor
+	if t.cursor >= 0 && t.cursor < len(t.filteredRows) {
+		selectedID = t.filteredRows[t.cursor].ID
+	}
+
 	t.rows = rows
 	t.applyFilter()
 	t.measureContentWidths()
 	t.cachedWidths = nil // force width recalculation with new measured data
 	t.colOffset = 0
 	t.cacheGen++
-	// Reset cursor if it's out of bounds
-	if t.cursor >= len(t.filteredRows) {
-		t.cursor = max(0, len(t.filteredRows)-1)
+
+	// Restore cursor to previously selected row by ID
+	if selectedID != "" {
+		for i, row := range t.filteredRows {
+			if row.ID == selectedID {
+				t.cursor = i
+				t.ValidateCursor()
+				return
+			}
+		}
 	}
+
+	// Row not found (deleted/filtered out): clamp to same index
+	if savedCursor >= len(t.filteredRows) {
+		t.cursor = max(0, len(t.filteredRows)-1)
+	} else {
+		t.cursor = savedCursor
+	}
+	t.ValidateCursor()
 }
 
-// SetFilter sets the filter string
+// SetFilter sets the filter string and resets cursor to top.
+// Use this for user-initiated filter changes.
 func (t *Table) SetFilter(filter string) {
 	t.filter = filter
 	t.applyFilter()
@@ -272,6 +295,40 @@ func (t *Table) SetFilter(filter string) {
 	t.cacheGen++
 	t.cursor = 0
 	t.offset = 0
+}
+
+// SetFilterPreserveCursor sets the filter string while preserving
+// the cursor on the same row by ID. Used when restoring filters
+// during view navigation (drill-down/back) so the user doesn't
+// lose their place.
+func (t *Table) SetFilterPreserveCursor(filter string) {
+	var selectedID string
+	savedCursor := t.cursor
+	if t.cursor >= 0 && t.cursor < len(t.filteredRows) {
+		selectedID = t.filteredRows[t.cursor].ID
+	}
+
+	t.filter = filter
+	t.applyFilter()
+	t.colOffset = 0
+	t.cacheGen++
+
+	if selectedID != "" {
+		for i, row := range t.filteredRows {
+			if row.ID == selectedID {
+				t.cursor = i
+				t.ValidateCursor()
+				return
+			}
+		}
+	}
+
+	if savedCursor >= len(t.filteredRows) {
+		t.cursor = max(0, len(t.filteredRows)-1)
+	} else {
+		t.cursor = savedCursor
+	}
+	t.ValidateCursor()
 }
 
 // GetFilter returns the current filter
