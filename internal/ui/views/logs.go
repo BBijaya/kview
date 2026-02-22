@@ -68,9 +68,10 @@ type LogsView struct {
 	pod       string
 	namespace string
 	container string
-	logs      strings.Builder
-	logLines  []string
-	loading   bool
+	logs             strings.Builder
+	logLines         []string
+	highlightedLines []string
+	loading          bool
 	err       error
 	tailLines int64
 	spinner   *components.Spinner
@@ -150,6 +151,10 @@ func (v *LogsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.logs.Reset()
 			v.logs.WriteString(msg.Logs)
 			v.logLines = strings.Split(msg.Logs, "\n")
+			v.highlightedLines = make([]string, len(v.logLines))
+			for i, line := range v.logLines {
+				v.highlightedLines[i] = highlightLogLine(line)
+			}
 			v.updateViewportContent()
 
 			// Auto-start streaming unless showing previous logs
@@ -168,10 +173,12 @@ func (v *LogsView) Update(msg tea.Msg) (View, tea.Cmd) {
 		}
 		v.logs.WriteString(msg.Line)
 		v.logLines = append(v.logLines, msg.Line)
+		v.highlightedLines = append(v.highlightedLines, highlightLogLine(msg.Line))
 
 		// Limit buffer size (keep last 10000 lines)
 		if len(v.logLines) > 10000 {
 			v.logLines = v.logLines[len(v.logLines)-10000:]
+			v.highlightedLines = v.highlightedLines[len(v.highlightedLines)-10000:]
 			v.logs.Reset()
 			v.logs.WriteString(strings.Join(v.logLines, "\n"))
 		}
@@ -263,6 +270,7 @@ func (v *LogsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			// Clear logs
 			v.logs.Reset()
 			v.logLines = nil
+			v.highlightedLines = nil
 			v.clearSearch()
 			v.viewport.SetContent("")
 
@@ -547,19 +555,25 @@ func (v *LogsView) stopStreaming() {
 	v.streaming = false
 }
 
-// updateViewportContent applies wrapping and search highlighting, then updates the viewport.
+// updateViewportContent applies wrapping, search highlighting, or JSON highlighting,
+// then updates the viewport. These modes are mutually exclusive:
+//   - Wrapping uses raw content (ANSI codes break byte-length line splitting)
+//   - Search uses raw content (ANSI codes break regex index matching)
+//   - Default uses JSON-highlighted lines when available
+//
 // Auto-scrolls to bottom if the viewport was already at the bottom before the update.
 func (v *LogsView) updateViewportContent() {
 	wasAtBottom := v.viewport.AtBottom()
 
-	content := v.logs.String()
-
+	var content string
 	if v.wrapText && v.viewport.Width > 0 {
-		content = wrapLines(content, v.viewport.Width)
-	}
-
-	if v.searchRegex != nil {
-		content = v.applyHighlighting(content)
+		content = wrapLines(v.logs.String(), v.viewport.Width)
+	} else if v.searchRegex != nil {
+		content = v.applyHighlighting(v.logs.String())
+	} else if len(v.highlightedLines) > 0 {
+		content = strings.Join(v.highlightedLines, "\n")
+	} else {
+		content = v.logs.String()
 	}
 
 	v.viewport.SetContent(content)

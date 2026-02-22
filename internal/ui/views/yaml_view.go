@@ -18,8 +18,9 @@ import (
 
 // YAMLLoadedMsg is sent when YAML content is loaded
 type YAMLLoadedMsg struct {
-	Content string
-	Err     error
+	Content    string
+	RawContent string
+	Err        error
 }
 
 // GoBackMsg requests going back to the previous view
@@ -28,14 +29,15 @@ type GoBackMsg struct{}
 // YAMLView displays raw YAML for a resource
 type YAMLView struct {
 	BaseView
-	viewport viewport.Model
-	client   k8s.Client
-	kind     string
-	name     string
-	content  string
-	loading  bool
-	err      error
-	spinner  *components.Spinner
+	viewport   viewport.Model
+	client     k8s.Client
+	kind       string
+	name       string
+	content    string
+	rawContent string
+	loading    bool
+	err        error
+	spinner    *components.Spinner
 }
 
 // NewYAMLView creates a new YAML view
@@ -82,6 +84,7 @@ func (v *YAMLView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = msg.Err
 		} else {
 			v.err = nil
+			v.rawContent = msg.RawContent
 			v.content = msg.Content
 			v.viewport.SetContent(v.content)
 			v.viewport.GotoTop()
@@ -196,9 +199,9 @@ func (v *YAMLView) IsLoading() bool {
 	return v.loading
 }
 
-// Content returns the current YAML text
+// Content returns the current YAML text (plain, without ANSI codes)
 func (v *YAMLView) Content() string {
-	return v.content
+	return v.rawContent
 }
 
 // Refresh fetches the resource and marshals to YAML
@@ -241,7 +244,9 @@ func (v *YAMLView) Refresh() tea.Cmd {
 			return YAMLLoadedMsg{Err: fmt.Errorf("failed to marshal YAML: %w", err)}
 		}
 
-		return YAMLLoadedMsg{Content: string(yamlBytes)}
+		raw := string(yamlBytes)
+		highlighted := HighlightYAML(raw)
+		return YAMLLoadedMsg{Content: highlighted, RawContent: raw}
 	})
 
 	return tea.Batch(cmds...)

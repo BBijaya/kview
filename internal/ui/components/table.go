@@ -289,6 +289,9 @@ func (t *Table) SetRows(rows []Row) {
 // SetFilter sets the filter string and resets cursor to top.
 // Use this for user-initiated filter changes.
 func (t *Table) SetFilter(filter string) {
+	if t.filter == filter {
+		return
+	}
 	t.filter = filter
 	t.applyFilter()
 	t.colOffset = 0

@@ -17,8 +17,9 @@ import (
 
 // HelmContentLoadedMsg is sent when Helm content (values or manifest) is loaded
 type HelmContentLoadedMsg struct {
-	Content string
-	Err     error
+	Content    string
+	RawContent string
+	Err        error
 }
 
 // OpenHelmContentMsg requests opening a Helm content view (values or manifest)
@@ -46,6 +47,7 @@ type HelmContentView struct {
 	releaseName string
 	revision    int
 	content     string
+	rawContent  string
 	loading     bool
 	err         error
 	spinner     *components.Spinner
@@ -100,6 +102,7 @@ func (v *HelmContentView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = msg.Err
 		} else {
 			v.err = nil
+			v.rawContent = msg.RawContent
 			v.content = msg.Content
 			v.viewport.SetContent(v.content)
 			v.viewport.GotoTop()
@@ -216,7 +219,7 @@ func (v *HelmContentView) SetSize(width, height int) {
 }
 
 func (v *HelmContentView) IsLoading() bool { return v.loading }
-func (v *HelmContentView) Content() string { return v.content }
+func (v *HelmContentView) Content() string { return v.rawContent }
 
 func (v *HelmContentView) Refresh() tea.Cmd {
 	if v.releaseName == "" {
@@ -240,7 +243,11 @@ func (v *HelmContentView) Refresh() tea.Cmd {
 			case HelmContentManifest:
 				content, err = v.client.GetHelmManifest(context.Background(), ns, name, rev)
 			}
-			return HelmContentLoadedMsg{Content: content, Err: err}
+			if err != nil {
+				return HelmContentLoadedMsg{Err: err}
+			}
+			highlighted := HighlightYAML(content)
+			return HelmContentLoadedMsg{Content: highlighted, RawContent: content}
 		},
 	)
 }
