@@ -38,6 +38,7 @@ func initHighlight() {
 			chroma.Text:            "#E2E8F0",
 			chroma.NameTag:         "#89B4FA",
 			chroma.NameAttribute:   "#89B4FA",
+			chroma.Literal:         "#10B981",
 			chroma.LiteralString:   "#10B981",
 			chroma.LiteralNumber:   "#06B6D4",
 			chroma.KeywordConstant: "#F59E0B",
