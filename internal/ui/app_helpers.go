@@ -67,7 +67,7 @@ func (a *App) goBack() tea.Cmd {
 	if f, ok := a.savedFilters[prev]; ok {
 		if view, ok := a.views[prev]; ok {
 			if ta, ok := view.(views.TableAccess); ok {
-				ta.GetTable().SetFilter(f)
+				ta.GetTable().SetFilterPreserveCursor(f)
 			}
 		}
 		delete(a.savedFilters, prev)
@@ -101,7 +101,7 @@ func (a *App) doSwitchView(viewType ViewType) tea.Cmd {
 	}
 	if view, ok := a.views[a.activeView]; ok {
 		if ta, ok := view.(views.TableAccess); ok {
-			ta.GetTable().SetFilter("")
+			ta.GetTable().SetFilterPreserveCursor("")
 		}
 	}
 
