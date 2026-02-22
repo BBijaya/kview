@@ -266,6 +266,9 @@ func (t *Table) SetRows(rows []Row) {
 
 // SetFilter sets the filter string
 func (t *Table) SetFilter(filter string) {
+	if t.filter == filter {
+		return
+	}
 	t.filter = filter
 	t.applyFilter()
 	t.colOffset = 0

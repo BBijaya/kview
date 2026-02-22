@@ -23,20 +23,22 @@ type DecodeSecretMsg struct {
 
 // SecretDecodedMsg is sent when decoded secret data is loaded
 type SecretDecodedMsg struct {
-	Content string
-	Err     error
+	Content    string
+	RawContent string
+	Err        error
 }
 
 // SecretDecodeView displays base64-decoded secret data
 type SecretDecodeView struct {
 	BaseView
-	viewport viewport.Model
-	client   k8s.Client
-	name     string
-	content  string
-	loading  bool
-	err      error
-	spinner  *components.Spinner
+	viewport   viewport.Model
+	client     k8s.Client
+	name       string
+	content    string
+	rawContent string
+	loading    bool
+	err        error
+	spinner    *components.Spinner
 }
 
 // NewSecretDecodeView creates a new secret decode view
@@ -77,6 +79,7 @@ func (v *SecretDecodeView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = msg.Err
 		} else {
 			v.err = nil
+			v.rawContent = msg.RawContent
 			v.content = msg.Content
 			v.viewport.SetContent(v.content)
 			v.viewport.GotoTop()
@@ -157,7 +160,7 @@ func (v *SecretDecodeView) View() string {
 }
 
 func (v *SecretDecodeView) Name() string    { return "Secret Decoded" }
-func (v *SecretDecodeView) Content() string { return v.content }
+func (v *SecretDecodeView) Content() string { return v.rawContent }
 
 func (v *SecretDecodeView) ShortHelp() []key.Binding {
 	return []key.Binding{
@@ -189,7 +192,11 @@ func (v *SecretDecodeView) Refresh() tea.Cmd {
 		v.spinner.Show(),
 		func() tea.Msg {
 			content, err := v.client.GetSecretDecoded(context.Background(), ns, name)
-			return SecretDecodedMsg{Content: content, Err: err}
+			if err != nil {
+				return SecretDecodedMsg{Err: err}
+			}
+			highlighted := highlightSecretContent(content)
+			return SecretDecodedMsg{Content: highlighted, RawContent: content}
 		},
 	)
 }

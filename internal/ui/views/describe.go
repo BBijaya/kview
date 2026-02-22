@@ -18,22 +18,24 @@ import (
 
 // DescribeLoadedMsg is sent when description is loaded
 type DescribeLoadedMsg struct {
-	Description string
-	Err         error
+	Description    string
+	RawDescription string
+	Err            error
 }
 
 // DescribeView displays detailed information about a resource
 type DescribeView struct {
 	BaseView
-	viewport    viewport.Model
-	client      k8s.Client
-	kind        string
-	namespace   string
-	name        string
-	description string
-	loading     bool
-	err         error
-	spinner     *components.Spinner
+	viewport       viewport.Model
+	client         k8s.Client
+	kind           string
+	namespace      string
+	name           string
+	description    string
+	rawDescription string
+	loading        bool
+	err            error
+	spinner        *components.Spinner
 }
 
 // NewDescribeView creates a new describe view
@@ -80,6 +82,7 @@ func (v *DescribeView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = msg.Err
 		} else {
 			v.err = nil
+			v.rawDescription = msg.RawDescription
 			v.description = msg.Description
 			v.viewport.SetContent(v.description)
 			v.viewport.GotoTop()
@@ -194,9 +197,9 @@ func (v *DescribeView) IsLoading() bool {
 	return v.loading
 }
 
-// Content returns the current describe text
+// Content returns the current describe text (plain, without ANSI codes)
 func (v *DescribeView) Content() string {
-	return v.description
+	return v.rawDescription
 }
 
 // Refresh refreshes the resource description
@@ -215,38 +218,51 @@ func (v *DescribeView) Refresh() tea.Cmd {
 			return DescribeLoadedMsg{Err: err}
 		}
 
-		description := formatResource(resource)
-		return DescribeLoadedMsg{Description: description}
+		raw := formatResource(resource, false)
+		highlighted := formatResource(resource, true)
+		return DescribeLoadedMsg{Description: highlighted, RawDescription: raw}
 	})
 
 	return tea.Batch(cmds...)
 }
 
-// formatResource formats a resource for display
-func formatResource(r *k8s.Resource) string {
+// formatResource formats a resource for display.
+// When highlight is true, lipgloss styles are applied to metadata and
+// chroma syntax highlighting is applied to JSON spec/status blocks.
+func formatResource(r *k8s.Resource, highlight bool) string {
 	var b strings.Builder
 
+	// Style closures — identity when not highlighting
+	label := func(s string) string { return s }
+	value := func(s string) string { return s }
+	section := func(s string) string { return s }
+	if highlight {
+		label = func(s string) string { return theme.Styles.InfoLabel.Render(s) }
+		value = func(s string) string { return theme.Styles.InfoValue.Render(s) }
+		section = func(s string) string { return theme.Styles.PanelTitle.Render(s) }
+	}
+
 	// Basic info
-	b.WriteString(fmt.Sprintf("Name:         %s\n", r.Name))
-	b.WriteString(fmt.Sprintf("Namespace:    %s\n", r.Namespace))
-	b.WriteString(fmt.Sprintf("Kind:         %s\n", r.Kind))
-	b.WriteString(fmt.Sprintf("API Version:  %s\n", r.APIVersion))
-	b.WriteString(fmt.Sprintf("UID:          %s\n", r.UID))
+	b.WriteString(label("Name:         ") + value(r.Name) + "\n")
+	b.WriteString(label("Namespace:    ") + value(r.Namespace) + "\n")
+	b.WriteString(label("Kind:         ") + value(r.Kind) + "\n")
+	b.WriteString(label("API Version:  ") + value(r.APIVersion) + "\n")
+	b.WriteString(label("UID:          ") + value(r.UID) + "\n")
 	b.WriteString("\n")
 
 	// Labels
-	b.WriteString("Labels:\n")
+	b.WriteString(section("Labels:") + "\n")
 	if len(r.Labels) == 0 {
 		b.WriteString("  <none>\n")
 	} else {
 		for k, v := range r.Labels {
-			b.WriteString(fmt.Sprintf("  %s=%s\n", k, v))
+			b.WriteString("  " + label(k) + "=" + value(v) + "\n")
 		}
 	}
 	b.WriteString("\n")
 
 	// Annotations
-	b.WriteString("Annotations:\n")
+	b.WriteString(section("Annotations:") + "\n")
 	if len(r.Annotations) == 0 {
 		b.WriteString("  <none>\n")
 	} else {
@@ -255,31 +271,31 @@ func formatResource(r *k8s.Resource) string {
 			if len(v) > 100 {
 				v = v[:100] + "..."
 			}
-			b.WriteString(fmt.Sprintf("  %s=%s\n", k, v))
+			b.WriteString("  " + label(k) + "=" + value(v) + "\n")
 		}
 	}
 	b.WriteString("\n")
 
 	// Owner References
 	if len(r.OwnerRefs) > 0 {
-		b.WriteString("Owner References:\n")
+		b.WriteString(section("Owner References:") + "\n")
 		for _, ref := range r.OwnerRefs {
-			b.WriteString(fmt.Sprintf("  %s: %s (UID: %s)\n", ref.Kind, ref.Name, ref.UID))
+			b.WriteString("  " + label(ref.Kind+": ") + value(ref.Name) + " (UID: " + value(ref.UID) + ")\n")
 		}
 		b.WriteString("\n")
 	}
 
 	// Conditions
 	if len(r.Conditions) > 0 {
-		b.WriteString("Conditions:\n")
+		b.WriteString(section("Conditions:") + "\n")
 		for _, c := range r.Conditions {
-			b.WriteString(fmt.Sprintf("  Type: %s\n", c.Type))
-			b.WriteString(fmt.Sprintf("    Status: %s\n", c.Status))
+			b.WriteString("  " + label("Type: ") + value(c.Type) + "\n")
+			b.WriteString("    " + label("Status: ") + value(c.Status) + "\n")
 			if c.Reason != "" {
-				b.WriteString(fmt.Sprintf("    Reason: %s\n", c.Reason))
+				b.WriteString("    " + label("Reason: ") + value(c.Reason) + "\n")
 			}
 			if c.Message != "" {
-				b.WriteString(fmt.Sprintf("    Message: %s\n", c.Message))
+				b.WriteString("    " + label("Message: ") + value(c.Message) + "\n")
 			}
 		}
 		b.WriteString("\n")
@@ -287,24 +303,32 @@ func formatResource(r *k8s.Resource) string {
 
 	// Raw JSON (formatted)
 	if r.Raw != nil {
-		b.WriteString("Spec:\n")
+		b.WriteString(section("Spec:") + "\n")
 		spec, ok := r.Raw.Object["spec"]
 		if ok {
 			jsonBytes, err := json.MarshalIndent(spec, "  ", "  ")
 			if err == nil {
-				b.WriteString("  " + string(jsonBytes))
+				rendered := "  " + string(jsonBytes)
+				if highlight {
+					rendered = HighlightJSON(rendered)
+				}
+				b.WriteString(rendered)
 			} else {
 				b.WriteString("  (failed to render spec)")
 			}
 		}
 		b.WriteString("\n\n")
 
-		b.WriteString("Status:\n")
+		b.WriteString(section("Status:") + "\n")
 		status, ok := r.Raw.Object["status"]
 		if ok {
 			jsonBytes, err := json.MarshalIndent(status, "  ", "  ")
 			if err == nil {
-				b.WriteString("  " + string(jsonBytes))
+				rendered := "  " + string(jsonBytes)
+				if highlight {
+					rendered = HighlightJSON(rendered)
+				}
+				b.WriteString(rendered)
 			} else {
 				b.WriteString("  (failed to render status)")
 			}
