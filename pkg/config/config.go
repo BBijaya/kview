@@ -27,6 +27,9 @@ type UIConfig struct {
 	// Theme name
 	Theme string `yaml:"theme"`
 
+	// Per-color overrides
+	Colors ThemeColors `yaml:"colors,omitempty"`
+
 	// Show all namespaces by default
 	ShowAllNamespaces bool `yaml:"showAllNamespaces"`
 

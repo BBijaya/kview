@@ -36,7 +36,78 @@ var (
 	ColorRowNumber   = lipgloss.Color("#6B7B8F") // Gray for row numbers
 	ColorNAValue       = lipgloss.Color("#6B7B8F") // Dim for n/a values
 	ColorCompletedText = lipgloss.Color("#8B95A5") // Light grey for completed row text
+
+	// Search highlight
+	ColorSearchHighlightBg = lipgloss.Color("#F59E0B") // Warning amber
+	ColorSearchHighlightFg = lipgloss.Color("#1B1B3A") // Background dark
 )
+
+// Apply reassigns all 21 color variables from a ThemeDefinition.
+// The 12 base colors come directly from td; the remaining 9 are derived
+// unless explicitly overridden in the definition.
+func Apply(td ThemeDefinition) {
+	// 12 base colors
+	ColorBackground = lipgloss.Color(td.Background)
+	ColorSurface = lipgloss.Color(td.Surface)
+	ColorText = lipgloss.Color(td.Text)
+	ColorMuted = lipgloss.Color(td.Muted)
+	ColorBorder = lipgloss.Color(td.Border)
+	ColorHighlight = lipgloss.Color(td.Highlight)
+	ColorPrimary = lipgloss.Color(td.Primary)
+	ColorAccent = lipgloss.Color(td.Accent)
+	ColorSuccess = lipgloss.Color(td.Success)
+	ColorWarning = lipgloss.Color(td.Warning)
+	ColorError = lipgloss.Color(td.Error)
+	ColorInfo = lipgloss.Color(td.Info)
+
+	// 9 derived colors (use override when provided, otherwise compute)
+	ColorSecondary = lipgloss.Color(td.Info)
+
+	if td.SurfaceAlt != "" {
+		ColorSurfaceAlt = lipgloss.Color(td.SurfaceAlt)
+	} else {
+		ColorSurfaceAlt = blendColor(td.Background, td.Surface, 0.5)
+	}
+
+	if td.FrameBorder != "" {
+		ColorFrameBorder = lipgloss.Color(td.FrameBorder)
+	} else {
+		ColorFrameBorder = lightenColor(td.Border, 0.3)
+	}
+
+	if td.SelectionBg != "" {
+		ColorSelectionBg = lipgloss.Color(td.SelectionBg)
+	} else {
+		ColorSelectionBg = darkenColor(td.Accent, 0.6)
+	}
+
+	if td.SelectionFg != "" {
+		ColorSelectionFg = lipgloss.Color(td.SelectionFg)
+	} else {
+		ColorSelectionFg = contrastForeground(td.SelectionBg, td.Accent)
+	}
+
+	ColorLabelPrefix = lightenColor(td.Primary, 0.2)
+	ColorRowNumber = lipgloss.Color(td.Muted)
+	ColorNAValue = lipgloss.Color(td.Muted)
+	ColorCompletedText = lightenColor(td.Muted, 0.15)
+
+	// Search highlight colors
+	ColorSearchHighlightBg = lipgloss.Color(td.Warning)
+	if td.SearchHighlightBg != "" {
+		ColorSearchHighlightBg = lipgloss.Color(td.SearchHighlightBg)
+	}
+	if td.SearchHighlightFg != "" {
+		ColorSearchHighlightFg = lipgloss.Color(td.SearchHighlightFg)
+	} else {
+		// Luminance-based: dark text on bright warning, bright text on dark warning
+		if luminance(td.Warning) > 0.179 {
+			ColorSearchHighlightFg = lipgloss.Color("#000000")
+		} else {
+			ColorSearchHighlightFg = lipgloss.Color("#FFFFFF")
+		}
+	}
+}
 
 // Status icons
 const (

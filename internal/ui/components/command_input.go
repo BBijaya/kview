@@ -57,7 +57,7 @@ func NewCommandInput() *CommandInput {
 			"nodes", "pods", "portforwards", "pvcs",
 			"replicasets", "rolebindings", "secrets", "services", "statefulsets",
 			// Command-only views (no keybinding equivalent)
-			"diagnosis", "health", "pulse", "timeline", "xray",
+			"diagnosis", "health", "pulse", "themes", "timeline", "xray",
 			// Navigation & utility
 			"help", "namespace", "quit", "refresh",
 			// Short aliases

@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
+	"github.com/bijaya/kview/internal/ui/components"
+	"github.com/bijaya/kview/internal/ui/theme"
 	"github.com/bijaya/kview/internal/ui/views"
 )
 
@@ -312,6 +316,34 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 			return a.goBack()
 		}
 		return a.drillDown(ViewHelp)
+
+	case "themes":
+		names := theme.ThemeNames
+		lines := make([]string, len(names))
+		for i, name := range names {
+			td := theme.BuiltinThemes[name]
+			swatch := ""
+			for _, hex := range []string{td.Primary, td.Accent, td.Success, td.Error} {
+				swatch += lipgloss.NewStyle().Background(lipgloss.Color(hex)).Render("  ")
+			}
+			prefix := "  "
+			displayName := name
+			if name == theme.ActiveThemeName {
+				prefix = "▸ "
+				displayName = lipgloss.NewStyle().Bold(true).
+					Foreground(theme.ColorHighlight).
+					Background(theme.ColorBackground).Render(name)
+			}
+			nameWidth := lipgloss.Width(displayName)
+			pad := ""
+			if nameWidth < 14 {
+				pad = strings.Repeat(" ", 14-nameWidth)
+			}
+			lines[i] = prefix + displayName + pad + " " + swatch
+		}
+		return a.toasts.Push(components.ToastInfo,
+			"Themes ("+strconv.Itoa(len(names))+")",
+			strings.Join(lines, "\n"), 10*time.Second)
 
 	case "api-resources", "ar":
 		return a.showAPIResourcePicker()

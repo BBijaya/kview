@@ -3,48 +3,62 @@ package views
 import (
 	"bytes"
 	"strings"
-	"sync"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/formatters"
 	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/alecthomas/chroma/v2/styles"
+
+	"github.com/bijaya/kview/internal/ui/theme"
 )
+
+func init() {
+	theme.OnComputeStyles(ResetHighlight)
+}
 
 var (
-	highlightOnce sync.Once
-	yamlLexer     chroma.Lexer
-	jsonLexer     chroma.Lexer
-	termFormatter chroma.Formatter
-	kviewStyle    *chroma.Style
+	highlightInitialized bool
+	yamlLexer            chroma.Lexer
+	jsonLexer            chroma.Lexer
+	termFormatter        chroma.Formatter
+	kviewStyle           *chroma.Style
 )
 
+// ResetHighlight clears the cached chroma style so it rebuilds from the
+// current theme colors on next use. Call after theme.Apply()/ComputeStyles().
+func ResetHighlight() {
+	highlightInitialized = false
+	kviewStyle = nil
+}
+
 func initHighlight() {
-	highlightOnce.Do(func() {
-		yamlLexer = lexers.Get("yaml")
-		if yamlLexer != nil {
-			yamlLexer = chroma.Coalesce(yamlLexer)
-		}
+	if highlightInitialized {
+		return
+	}
+	highlightInitialized = true
 
-		jsonLexer = lexers.Get("json")
-		if jsonLexer != nil {
-			jsonLexer = chroma.Coalesce(jsonLexer)
-		}
+	yamlLexer = lexers.Get("yaml")
+	if yamlLexer != nil {
+		yamlLexer = chroma.Coalesce(yamlLexer)
+	}
 
-		termFormatter = formatters.Get("terminal16m")
+	jsonLexer = lexers.Get("json")
+	if jsonLexer != nil {
+		jsonLexer = chroma.Coalesce(jsonLexer)
+	}
 
-		kviewStyle = styles.Register(chroma.MustNewStyle("kview", chroma.StyleEntries{
-			chroma.Background:      "#E2E8F0 bg:#1B1B3A",
-			chroma.Text:            "#E2E8F0",
-			chroma.NameTag:         "#89B4FA",
-			chroma.NameAttribute:   "#89B4FA",
-			chroma.Literal:         "#10B981",
-			chroma.LiteralString:   "#10B981",
-			chroma.LiteralNumber:   "#06B6D4",
-			chroma.KeywordConstant: "#F59E0B",
-			chroma.Comment:         "#64748B",
-			chroma.Punctuation:     "#E2E8F0",
-		}))
+	termFormatter = formatters.Get("terminal16m")
+
+	kviewStyle = chroma.MustNewStyle("kview", chroma.StyleEntries{
+		chroma.Background:      string(theme.ColorText) + " bg:" + string(theme.ColorBackground),
+		chroma.Text:            string(theme.ColorText),
+		chroma.NameTag:         string(theme.ColorHighlight),
+		chroma.NameAttribute:   string(theme.ColorHighlight),
+		chroma.Literal:         string(theme.ColorSuccess),
+		chroma.LiteralString:   string(theme.ColorSuccess),
+		chroma.LiteralNumber:   string(theme.ColorAccent),
+		chroma.KeywordConstant: string(theme.ColorWarning),
+		chroma.Comment:         string(theme.ColorMuted),
+		chroma.Punctuation:     string(theme.ColorText),
 	})
 }
 
