@@ -115,6 +115,17 @@ func (v *ServicesView) Update(msg tea.Msg) (View, tea.Cmd) {
 			if row := v.table.SelectedRow(); row != nil {
 				for _, svc := range v.services {
 					if svc.UID == row.ID {
+						if len(svc.Selector) > 0 {
+							svc := svc
+							return v, func() tea.Msg {
+								return DrillDownServiceMsg{
+									ServiceName: svc.Name,
+									Namespace:   svc.Namespace,
+									Selector:    svc.Selector,
+								}
+							}
+						}
+						// No selector (e.g. ExternalName) — fall through to ResourceSelectedMsg
 						return v, func() tea.Msg {
 							return ResourceSelectedMsg{
 								Kind:      "Service",

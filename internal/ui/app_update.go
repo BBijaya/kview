@@ -311,7 +311,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					res.Namespace,
 					res.UID,
 				)
-				return a, a.drillDown(ViewXray)
+				return a, a.drillDownWithContext(ViewXray, res.Kind+"/"+res.Name)
 			}
 		}
 
@@ -409,41 +409,76 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			pv.SetNodeFilter(msg.NodeName)
 		}
 		a.header.SetViewName("Pods (" + msg.NodeName + ")")
-		return a, a.drillDown(ViewPods)
+		return a, a.drillDownWithContext(ViewPods, msg.NodeName)
 
 	case views.DrillDownDeploymentMsg:
 		if pv, ok := a.views[ViewPods].(*views.PodsView); ok {
 			pv.SetOwnerFilter("Deployment", msg.DeploymentName)
 		}
 		a.header.SetViewName("Pods (" + msg.DeploymentName + ")")
-		return a, a.drillDown(ViewPods)
+		return a, a.drillDownWithContext(ViewPods, msg.DeploymentName)
 
 	// Handle drill-down from Pod to Containers
 	case views.DrillDownContainersMsg:
 		a.containersView.SetPod(msg.Pod)
+		containerCtx := msg.Pod.Name
+		if msg.Pod.Namespace != "" {
+			containerCtx = msg.Pod.Namespace + "/" + msg.Pod.Name
+		}
 		a.header.SetViewName("Containers (" + msg.Pod.Name + ")")
-		return a, a.drillDown(ViewContainers)
+		return a, a.drillDownWithContext(ViewContainers, containerCtx)
 
 	// Handle drill-down from Helm Release to History
 	case views.DrillDownHelmHistoryMsg:
 		a.helmHistoryView.SetRelease(msg.Namespace, msg.ReleaseName)
 		a.header.SetViewName("History (" + msg.ReleaseName + ")")
-		return a, a.drillDown(ViewHelmHistory)
+		return a, a.drillDownWithContext(ViewHelmHistory, msg.ReleaseName)
+
+	// Handle generic drill-down from workload to filtered Pods
+	case views.DrillDownToPodsMsg:
+		if pv, ok := a.views[ViewPods].(*views.PodsView); ok {
+			pv.SetOwnerFilter(msg.OwnerKind, msg.OwnerName)
+		}
+		a.header.SetViewName("Pods (" + msg.OwnerName + ")")
+		return a, a.drillDownWithContext(ViewPods, msg.OwnerName)
+
+	// Handle drill-down from CronJob to filtered Jobs
+	case views.DrillDownCronJobMsg:
+		if jv, ok := a.views[ViewJobs].(*views.JobsView); ok {
+			jv.SetOwnerFilter("CronJob", msg.CronJobName)
+		}
+		a.header.SetViewName("Jobs (" + msg.CronJobName + ")")
+		return a, a.drillDownWithContext(ViewJobs, msg.CronJobName)
+
+	// Handle drill-down from Service to Pods via label selector
+	case views.DrillDownServiceMsg:
+		if pv, ok := a.views[ViewPods].(*views.PodsView); ok {
+			pv.SetLabelSelector(msg.Selector)
+		}
+		a.header.SetViewName("Pods (" + msg.ServiceName + ")")
+		return a, a.drillDownWithContext(ViewPods, msg.ServiceName)
+
+	// Handle navigation from Events to describe involved resource
+	case views.NavigateToResourceMsg:
+		resource := kindToAPIResource(msg.Kind)
+		a.describeView.SetResource(resource, msg.Namespace, msg.Name)
+		a.header.SetViewName("Describe (" + msg.Name + ")")
+		return a, a.drillDownWithContext(ViewDescribe, msg.Kind+"/"+msg.Name)
 
 	// Handle secret decode view
 	case views.DecodeSecretMsg:
 		a.secretDecodeView.SetResource(msg.Namespace, msg.Name)
-		return a, a.drillDown(ViewSecretDecode)
+		return a, a.drillDownWithContext(ViewSecretDecode, msg.Name)
 
 	// Handle Helm values/manifest content view
 	case views.OpenHelmContentMsg:
 		switch msg.Mode {
 		case views.HelmContentValues:
 			a.helmValuesView.SetRelease(msg.Namespace, msg.ReleaseName, msg.Revision)
-			return a, a.drillDown(ViewHelmValues)
+			return a, a.drillDownWithContext(ViewHelmValues, msg.ReleaseName)
 		case views.HelmContentManifest:
 			a.helmManifestView.SetRelease(msg.Namespace, msg.ReleaseName, msg.Revision)
-			return a, a.drillDown(ViewHelmManifest)
+			return a, a.drillDownWithContext(ViewHelmManifest, msg.ReleaseName)
 		}
 
 	// Handle combined resource+view message (atomic, no race)
@@ -474,7 +509,21 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				msg.Name,
 			)
 		}
-		return a, a.drillDown(targetView)
+		var ctx string
+		switch targetView {
+		case ViewLogs:
+			if msg.Namespace != "" {
+				ctx = msg.Namespace + "/" + msg.Name
+			} else {
+				ctx = msg.Name
+			}
+			if msg.Container != "" {
+				ctx += "/" + msg.Container
+			}
+		case ViewDescribe, ViewYAML:
+			ctx = msg.Kind + "/" + msg.Name
+		}
+		return a, a.drillDownWithContext(targetView, ctx)
 
 	case commands.RefreshMsg:
 		if a.isInformerView(a.activeView) {

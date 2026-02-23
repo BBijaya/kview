@@ -48,6 +48,33 @@ type DrillDownContainersMsg struct {
 	Pod k8s.PodInfo
 }
 
+// DrillDownToPodsMsg requests drill-down from any workload to its pods
+type DrillDownToPodsMsg struct {
+	OwnerKind string // "StatefulSet", "DaemonSet", "ReplicaSet", "Job"
+	OwnerName string
+	Namespace string
+}
+
+// DrillDownCronJobMsg requests drill-down from a CronJob to its Jobs
+type DrillDownCronJobMsg struct {
+	CronJobName string
+	Namespace   string
+}
+
+// DrillDownServiceMsg requests drill-down from a Service to its selected Pods
+type DrillDownServiceMsg struct {
+	ServiceName string
+	Namespace   string
+	Selector    map[string]string
+}
+
+// NavigateToResourceMsg requests navigation to describe a specific resource
+type NavigateToResourceMsg struct {
+	Kind      string // e.g., "Pod", "Deployment"
+	Name      string
+	Namespace string
+}
+
 // View defines the interface for all views
 type View interface {
 	// Init initializes the view

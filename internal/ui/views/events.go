@@ -113,15 +113,19 @@ func (v *EventsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			if row := v.table.SelectedRow(); row != nil {
 				for _, event := range v.events {
 					if event.UID == row.ID {
-						return v, func() tea.Msg {
-							return ResourceSelectedMsg{
-								Kind:      "Event",
-								Resource:  "events",
-								Namespace: event.Namespace,
-								Name:      event.Name,
-								UID:       event.UID,
+						if event.ObjectKind != "" && event.ObjectName != "" {
+							kind := event.ObjectKind
+							name := event.ObjectName
+							ns := event.Namespace
+							return v, func() tea.Msg {
+								return NavigateToResourceMsg{
+									Kind:      kind,
+									Name:      name,
+									Namespace: ns,
+								}
 							}
 						}
+						break
 					}
 				}
 			}

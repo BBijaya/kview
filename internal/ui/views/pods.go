@@ -123,6 +123,9 @@ type PodsView struct {
 
 	// Drill-down node filter (set when navigating from Nodes)
 	nodeFilter string // e.g. "minikube"
+
+	// Drill-down label selector filter (set when navigating from Services)
+	labelSelector map[string]string
 }
 
 // NewPodsView creates a new pods view
@@ -198,7 +201,7 @@ func (v *PodsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			return v, nil
 
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
-			if v.HasOwnerFilter() || v.HasNodeFilter() {
+			if v.HasOwnerFilter() || v.HasNodeFilter() || v.HasLabelSelector() {
 				return v, func() tea.Msg { return GoBackMsg{} }
 			}
 
@@ -463,6 +466,23 @@ func (v *PodsView) HasNodeFilter() bool {
 	return v.nodeFilter != ""
 }
 
+// SetLabelSelector sets a drill-down label selector filter (from Services view)
+func (v *PodsView) SetLabelSelector(selector map[string]string) {
+	v.labelSelector = selector
+	v.updateTable()
+}
+
+// ClearLabelSelector removes the drill-down label selector filter
+func (v *PodsView) ClearLabelSelector() {
+	v.labelSelector = nil
+	v.updateTable()
+}
+
+// HasLabelSelector returns whether a label selector filter is active
+func (v *PodsView) HasLabelSelector() bool {
+	return len(v.labelSelector) > 0
+}
+
 // SelectedPod returns the currently selected pod
 func (v *PodsView) SelectedPod() *k8s.PodInfo {
 	if row := v.table.SelectedRow(); row != nil {
@@ -481,7 +501,7 @@ func (v *PodsView) RowCount() int {
 }
 
 func (v *PodsView) filteredPods() []k8s.PodInfo {
-	if v.ownerName == "" && v.nodeFilter == "" {
+	if v.ownerName == "" && v.nodeFilter == "" && len(v.labelSelector) == 0 {
 		return v.pods
 	}
 	var filtered []k8s.PodInfo
@@ -492,9 +512,22 @@ func (v *PodsView) filteredPods() []k8s.PodInfo {
 		if v.ownerName != "" && !v.matchesOwnerFilter(pod) {
 			continue
 		}
+		if len(v.labelSelector) > 0 && !v.matchesLabelSelector(pod) {
+			continue
+		}
 		filtered = append(filtered, pod)
 	}
 	return filtered
+}
+
+// matchesLabelSelector checks whether a pod's labels match the selector.
+func (v *PodsView) matchesLabelSelector(pod k8s.PodInfo) bool {
+	for k, val := range v.labelSelector {
+		if pod.Labels[k] != val {
+			return false
+		}
+	}
+	return true
 }
 
 // matchesOwnerFilter checks whether a pod belongs to the filtered owner.

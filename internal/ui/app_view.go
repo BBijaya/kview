@@ -473,6 +473,10 @@ func (a *App) buildResourceLabel() string {
 	if ns == "" || a.isClusterScopedView() {
 		ns = "all"
 	}
+	// Override with drill-down context when active
+	if a.drillContext != "" {
+		ns = a.drillContext
+	}
 
 	count := ""
 	if view, ok := a.views[a.activeView]; ok {
@@ -517,8 +521,21 @@ func (a *App) renderFooter(width int) string {
 		Foreground(theme.ColorHighlight).
 		Bold(true)
 
-	// Left: resource name
-	left := bgStyle.Render(" ") + labelStyle.Render(ViewName(a.activeView))
+	// Left: breadcrumb trail or simple resource name
+	var left string
+	if len(a.viewStack) > 0 {
+		sepStyle := lipgloss.NewStyle().
+			Background(theme.ColorBackground).
+			Foreground(theme.ColorMuted)
+		parts := make([]string, 0, len(a.viewStack)+1)
+		for _, entry := range a.viewStack {
+			parts = append(parts, labelStyle.Render(ViewName(entry.View)))
+		}
+		parts = append(parts, labelStyle.Render(ViewName(a.activeView)))
+		left = bgStyle.Render(" ") + strings.Join(parts, sepStyle.Render(" > "))
+	} else {
+		left = bgStyle.Render(" ") + labelStyle.Render(ViewName(a.activeView))
+	}
 	leftWidth := lipgloss.Width(left)
 
 	// Center: footer message (copy confirmation, loading, etc.)

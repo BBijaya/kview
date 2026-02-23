@@ -41,6 +41,12 @@ type actionResult struct {
 	success bool
 }
 
+// drillDownEntry records a view in the navigation stack with its context.
+type drillDownEntry struct {
+	View         ViewType
+	DrillContext string // context that was active when this view was current
+}
+
 // App is the main application model
 type App struct {
 	// Kubernetes
@@ -53,9 +59,10 @@ type App struct {
 	height       int
 	activeView   ViewType
 	previousView ViewType
-	viewStack        []ViewType          // drill-down navigation stack
+	viewStack        []drillDownEntry    // drill-down navigation stack
 	savedFilters     map[ViewType]string // saved filter text for drill-down persistence
 	drillDownSavedNS string              // saved namespace for node drill-down restore
+	drillContext     string              // parent context shown in body label (e.g., "nodename", "ns/podname")
 	views            map[ViewType]views.View
 	inputMode    InputMode
 

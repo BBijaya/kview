@@ -48,6 +48,10 @@ type JobsView struct {
 	loading bool
 	err     error
 	spinner *components.Spinner
+
+	// Drill-down owner filter (set when navigating from CronJobs)
+	ownerKind string
+	ownerName string
 }
 
 // NewJobsView creates a new jobs view
@@ -109,17 +113,21 @@ func (v *JobsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.filter.Show()
 			return v, nil
 
+		case key.Matches(msg, theme.DefaultKeyMap().Escape):
+			if v.HasOwnerFilter() {
+				return v, func() tea.Msg { return GoBackMsg{} }
+			}
+
 		case key.Matches(msg, theme.DefaultKeyMap().Enter):
 			if row := v.table.SelectedRow(); row != nil {
 				for _, job := range v.jobs {
 					if job.UID == row.ID {
+						job := job
 						return v, func() tea.Msg {
-							return ResourceSelectedMsg{
-								Kind:      "Job",
-								Resource:  "jobs",
+							return DrillDownToPodsMsg{
+								OwnerKind: "Job",
+								OwnerName: job.Name,
 								Namespace: job.Namespace,
-								Name:      job.Name,
-								UID:       job.UID,
 							}
 						}
 					}
@@ -304,14 +312,50 @@ func (v *JobsView) SelectedJob() *k8s.JobInfo {
 	return nil
 }
 
+// SetOwnerFilter sets a drill-down owner filter (e.g. from CronJobs view)
+func (v *JobsView) SetOwnerFilter(kind, name string) {
+	v.ownerKind = kind
+	v.ownerName = name
+	v.updateTable()
+}
+
+// ClearOwnerFilter removes the drill-down owner filter
+func (v *JobsView) ClearOwnerFilter() {
+	v.ownerKind = ""
+	v.ownerName = ""
+	v.updateTable()
+}
+
+// HasOwnerFilter returns whether an owner filter is active
+func (v *JobsView) HasOwnerFilter() bool {
+	return v.ownerName != ""
+}
+
+func (v *JobsView) filteredJobs() []k8s.JobInfo {
+	if v.ownerName == "" {
+		return v.jobs
+	}
+	var filtered []k8s.JobInfo
+	for _, job := range v.jobs {
+		for _, ref := range job.OwnerRefs {
+			if ref.Kind == v.ownerKind && ref.Name == v.ownerName {
+				filtered = append(filtered, job)
+				break
+			}
+		}
+	}
+	return filtered
+}
+
 // RowCount returns the number of visible rows
 func (v *JobsView) RowCount() int {
 	return v.table.RowCount()
 }
 
 func (v *JobsView) updateTable() {
-	rows := make([]components.Row, len(v.jobs))
-	for i, job := range v.jobs {
+	jobs := v.filteredJobs()
+	rows := make([]components.Row, len(jobs))
+	for i, job := range jobs {
 		// Format completions as succeeded/total
 		completions := fmt.Sprintf("%d/%d", job.Succeeded, job.Completions)
 
