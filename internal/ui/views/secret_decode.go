@@ -39,6 +39,7 @@ type SecretDecodeView struct {
 	loading    bool
 	err        error
 	spinner    *components.Spinner
+	search     ViewportSearch
 }
 
 // NewSecretDecodeView creates a new secret decode view
@@ -81,7 +82,11 @@ func (v *SecretDecodeView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = nil
 			v.rawContent = msg.RawContent
 			v.content = msg.Content
-			v.viewport.SetContent(v.content)
+			if pattern := v.search.ActivePattern(); pattern != "" {
+				lines := strings.Split(v.rawContent, "\n")
+				v.search.ApplySearch(pattern, lines)
+			}
+			v.updateViewportContent()
 			v.viewport.GotoTop()
 		}
 
@@ -94,6 +99,22 @@ func (v *SecretDecodeView) Update(msg tea.Msg) (View, tea.Cmd) {
 
 		case key.Matches(msg, theme.DefaultKeyMap().Refresh):
 			return v, v.Refresh()
+
+		case key.Matches(msg, theme.DefaultKeyMap().LogSearchNext):
+			if v.search.HasSearch() {
+				if offset := v.search.NextMatch(); offset >= 0 {
+					v.viewport.SetYOffset(offset)
+				}
+			}
+			return v, nil
+
+		case key.Matches(msg, theme.DefaultKeyMap().LogSearchPrev):
+			if v.search.HasSearch() {
+				if offset := v.search.PrevMatch(); offset >= 0 {
+					v.viewport.SetYOffset(offset)
+				}
+			}
+			return v, nil
 
 		case msg.String() == "G":
 			v.viewport.GotoBottom()
@@ -128,6 +149,40 @@ func (v *SecretDecodeView) Update(msg tea.Msg) (View, tea.Cmd) {
 	return v, tea.Batch(cmds...)
 }
 
+// ApplySearch implements ViewportSearcher.
+func (v *SecretDecodeView) ApplySearch(pattern string) {
+	if pattern == "" {
+		v.ClearSearch()
+		return
+	}
+	lines := strings.Split(v.rawContent, "\n")
+	v.search.ApplySearch(pattern, lines)
+	v.updateViewportContent()
+	if offset := v.search.CurrentMatchOffset(); offset >= 0 {
+		v.viewport.SetYOffset(offset)
+	}
+}
+
+// ActiveSearchPattern implements ViewportSearcher.
+func (v *SecretDecodeView) ActiveSearchPattern() string {
+	return v.search.ActivePattern()
+}
+
+// ClearSearch implements ViewportSearcher.
+func (v *SecretDecodeView) ClearSearch() {
+	v.search.Clear()
+	v.updateViewportContent()
+}
+
+// updateViewportContent sets the viewport content with or without search highlighting.
+func (v *SecretDecodeView) updateViewportContent() {
+	if v.search.HasSearch() {
+		v.viewport.SetContent(v.search.HighlightContent(v.rawContent))
+	} else {
+		v.viewport.SetContent(v.content)
+	}
+}
+
 // View renders the view
 func (v *SecretDecodeView) View() string {
 	if v.name == "" {
@@ -145,12 +200,18 @@ func (v *SecretDecodeView) View() string {
 	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
 
 	header := theme.Styles.PanelTitle.Render(fmt.Sprintf("Decode: %s/%s", v.namespace, v.name))
+
+	// Search status
+	if status := v.search.StatusText(); status != "" {
+		header += bgStyle.Render(" ") + theme.Styles.StatusPending.Render(status)
+	}
+
 	headerWidth := lipgloss.Width(header)
 	if headerWidth < v.width {
 		header += bgStyle.Render(strings.Repeat(" ", v.width-headerWidth))
 	}
 
-	footer := theme.Styles.Help.Render("↑↓/pgup/pgdn scroll • g/G top/bottom • esc back")
+	footer := theme.Styles.Help.Render("↑↓/pgup/pgdn scroll • g/G top/bottom • / search • n/N next/prev • esc back")
 	footerWidth := lipgloss.Width(footer)
 	if footerWidth < v.width {
 		footer += bgStyle.Render(strings.Repeat(" ", v.width-footerWidth))

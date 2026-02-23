@@ -36,6 +36,7 @@ type DescribeView struct {
 	loading        bool
 	err            error
 	spinner        *components.Spinner
+	search         ViewportSearch
 }
 
 // NewDescribeView creates a new describe view
@@ -84,7 +85,11 @@ func (v *DescribeView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = nil
 			v.rawDescription = msg.RawDescription
 			v.description = msg.Description
-			v.viewport.SetContent(v.description)
+			if pattern := v.search.ActivePattern(); pattern != "" {
+				lines := strings.Split(v.rawDescription, "\n")
+				v.search.ApplySearch(pattern, lines)
+			}
+			v.updateViewportContent()
 			v.viewport.GotoTop()
 		}
 
@@ -97,6 +102,22 @@ func (v *DescribeView) Update(msg tea.Msg) (View, tea.Cmd) {
 
 		case key.Matches(msg, theme.DefaultKeyMap().Refresh):
 			return v, v.Refresh()
+
+		case key.Matches(msg, theme.DefaultKeyMap().LogSearchNext):
+			if v.search.HasSearch() {
+				if offset := v.search.NextMatch(); offset >= 0 {
+					v.viewport.SetYOffset(offset)
+				}
+			}
+			return v, nil
+
+		case key.Matches(msg, theme.DefaultKeyMap().LogSearchPrev):
+			if v.search.HasSearch() {
+				if offset := v.search.PrevMatch(); offset >= 0 {
+					v.viewport.SetYOffset(offset)
+				}
+			}
+			return v, nil
 
 		case msg.String() == "G":
 			v.viewport.GotoBottom()
@@ -153,6 +174,11 @@ func (v *DescribeView) View() string {
 	// Header
 	header := theme.Styles.PanelTitle.Render(fmt.Sprintf("Describe: %s/%s/%s", v.kind, v.namespace, v.name))
 
+	// Search status
+	if status := v.search.StatusText(); status != "" {
+		header += bgStyle.Render(" ") + theme.Styles.StatusPending.Render(status)
+	}
+
 	// Pad header to full width
 	headerWidth := lipgloss.Width(header)
 	if headerWidth < v.width {
@@ -160,7 +186,7 @@ func (v *DescribeView) View() string {
 	}
 
 	// Footer with help
-	footer := theme.Styles.Help.Render("↑↓/pgup/pgdn scroll • g/G top/bottom • esc back")
+	footer := theme.Styles.Help.Render("↑↓/pgup/pgdn scroll • g/G top/bottom • / search • n/N next/prev • esc back")
 
 	// Pad footer to full width
 	footerWidth := lipgloss.Width(footer)
@@ -200,6 +226,40 @@ func (v *DescribeView) IsLoading() bool {
 // Content returns the current describe text (plain, without ANSI codes)
 func (v *DescribeView) Content() string {
 	return v.rawDescription
+}
+
+// ApplySearch implements ViewportSearcher.
+func (v *DescribeView) ApplySearch(pattern string) {
+	if pattern == "" {
+		v.ClearSearch()
+		return
+	}
+	lines := strings.Split(v.rawDescription, "\n")
+	v.search.ApplySearch(pattern, lines)
+	v.updateViewportContent()
+	if offset := v.search.CurrentMatchOffset(); offset >= 0 {
+		v.viewport.SetYOffset(offset)
+	}
+}
+
+// ActiveSearchPattern implements ViewportSearcher.
+func (v *DescribeView) ActiveSearchPattern() string {
+	return v.search.ActivePattern()
+}
+
+// ClearSearch implements ViewportSearcher.
+func (v *DescribeView) ClearSearch() {
+	v.search.Clear()
+	v.updateViewportContent()
+}
+
+// updateViewportContent sets the viewport content with or without search highlighting.
+func (v *DescribeView) updateViewportContent() {
+	if v.search.HasSearch() {
+		v.viewport.SetContent(v.search.HighlightContent(v.rawDescription))
+	} else {
+		v.viewport.SetContent(v.description)
+	}
 }
 
 // Refresh refreshes the resource description

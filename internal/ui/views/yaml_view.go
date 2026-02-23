@@ -38,6 +38,7 @@ type YAMLView struct {
 	loading    bool
 	err        error
 	spinner    *components.Spinner
+	search     ViewportSearch
 }
 
 // NewYAMLView creates a new YAML view
@@ -86,7 +87,11 @@ func (v *YAMLView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = nil
 			v.rawContent = msg.RawContent
 			v.content = msg.Content
-			v.viewport.SetContent(v.content)
+			if pattern := v.search.ActivePattern(); pattern != "" {
+				lines := strings.Split(v.rawContent, "\n")
+				v.search.ApplySearch(pattern, lines)
+			}
+			v.updateViewportContent()
 			v.viewport.GotoTop()
 		}
 
@@ -99,6 +104,22 @@ func (v *YAMLView) Update(msg tea.Msg) (View, tea.Cmd) {
 
 		case key.Matches(msg, theme.DefaultKeyMap().Refresh):
 			return v, v.Refresh()
+
+		case key.Matches(msg, theme.DefaultKeyMap().LogSearchNext):
+			if v.search.HasSearch() {
+				if offset := v.search.NextMatch(); offset >= 0 {
+					v.viewport.SetYOffset(offset)
+				}
+			}
+			return v, nil
+
+		case key.Matches(msg, theme.DefaultKeyMap().LogSearchPrev):
+			if v.search.HasSearch() {
+				if offset := v.search.PrevMatch(); offset >= 0 {
+					v.viewport.SetYOffset(offset)
+				}
+			}
+			return v, nil
 
 		case msg.String() == "G":
 			v.viewport.GotoBottom()
@@ -136,6 +157,40 @@ func (v *YAMLView) Update(msg tea.Msg) (View, tea.Cmd) {
 	return v, tea.Batch(cmds...)
 }
 
+// ApplySearch implements ViewportSearcher.
+func (v *YAMLView) ApplySearch(pattern string) {
+	if pattern == "" {
+		v.ClearSearch()
+		return
+	}
+	lines := strings.Split(v.rawContent, "\n")
+	v.search.ApplySearch(pattern, lines)
+	v.updateViewportContent()
+	if offset := v.search.CurrentMatchOffset(); offset >= 0 {
+		v.viewport.SetYOffset(offset)
+	}
+}
+
+// ActiveSearchPattern implements ViewportSearcher.
+func (v *YAMLView) ActiveSearchPattern() string {
+	return v.search.ActivePattern()
+}
+
+// ClearSearch implements ViewportSearcher.
+func (v *YAMLView) ClearSearch() {
+	v.search.Clear()
+	v.updateViewportContent()
+}
+
+// updateViewportContent sets the viewport content with or without search highlighting.
+func (v *YAMLView) updateViewportContent() {
+	if v.search.HasSearch() {
+		v.viewport.SetContent(v.search.HighlightContent(v.rawContent))
+	} else {
+		v.viewport.SetContent(v.content)
+	}
+}
+
 // View renders the view
 func (v *YAMLView) View() string {
 	if v.name == "" {
@@ -155,6 +210,11 @@ func (v *YAMLView) View() string {
 	// Header
 	header := theme.Styles.PanelTitle.Render(fmt.Sprintf("YAML: %s/%s/%s", v.kind, v.namespace, v.name))
 
+	// Search status
+	if status := v.search.StatusText(); status != "" {
+		header += bgStyle.Render(" ") + theme.Styles.StatusPending.Render(status)
+	}
+
 	// Pad header to full width
 	headerWidth := lipgloss.Width(header)
 	if headerWidth < v.width {
@@ -162,7 +222,7 @@ func (v *YAMLView) View() string {
 	}
 
 	// Footer with help
-	footer := theme.Styles.Help.Render("↑↓/pgup/pgdn scroll • g/G top/bottom • esc back")
+	footer := theme.Styles.Help.Render("↑↓/pgup/pgdn scroll • g/G top/bottom • / search • n/N next/prev • esc back")
 
 	// Pad footer to full width
 	footerWidth := lipgloss.Width(footer)

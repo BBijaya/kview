@@ -25,6 +25,14 @@ type FilterChecker interface {
 	IsFilterVisible() bool
 }
 
+// ViewportSearcher is an optional interface for viewport-based views that support text search.
+// The app uses this for generic search dispatch (filter key, search apply/clear).
+type ViewportSearcher interface {
+	ApplySearch(pattern string)
+	ActiveSearchPattern() string
+	ClearSearch()
+}
+
 // DrillDownViewMsg requests a drill-down navigation to a view type.
 // Unlike SwitchViewMsg (which clears the navigation stack), this pushes
 // the current view onto the stack so Escape/GoBackMsg returns to it.
