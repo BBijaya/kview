@@ -53,9 +53,10 @@ type App struct {
 	height       int
 	activeView   ViewType
 	previousView ViewType
-	viewStack    []ViewType          // drill-down navigation stack
-	savedFilters map[ViewType]string // saved filter text for drill-down persistence
-	views        map[ViewType]views.View
+	viewStack        []ViewType          // drill-down navigation stack
+	savedFilters     map[ViewType]string // saved filter text for drill-down persistence
+	drillDownSavedNS string              // saved namespace for node drill-down restore
+	views            map[ViewType]views.View
 	inputMode    InputMode
 
 	// Special views (not in resource list)

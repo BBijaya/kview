@@ -470,7 +470,7 @@ func (a *App) buildResourceLabel() string {
 		viewName = a.genericView.Name()
 	}
 	ns := a.namespace
-	if ns == "" {
+	if ns == "" || a.isClusterScopedView() {
 		ns = "all"
 	}
 

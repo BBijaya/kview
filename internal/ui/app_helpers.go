@@ -56,7 +56,20 @@ func (a *App) goBack() tea.Cmd {
 	// Clean up when leaving drill-down views
 	if a.activeView == ViewPods {
 		if pv, ok := a.views[ViewPods].(*views.PodsView); ok {
+			// Restore namespace if it was changed for node drill-down
+			if pv.HasNodeFilter() && a.drillDownSavedNS != a.namespace {
+				a.namespace = a.drillDownSavedNS
+				a.propagateNamespace(a.namespace)
+				if a.namespace == "" {
+					a.header.SetNamespace("all")
+				} else {
+					a.header.SetNamespace(a.namespace)
+				}
+				a.setInformersNamespace(a.namespace)
+				a.drillDownSavedNS = ""
+			}
 			pv.ClearOwnerFilter()
+			pv.ClearNodeFilter()
 		}
 	}
 	prev := a.viewStack[len(a.viewStack)-1]
@@ -80,8 +93,10 @@ func (a *App) goBack() tea.Cmd {
 func (a *App) clearDrillDownState() {
 	a.viewStack = nil
 	a.savedFilters = make(map[ViewType]string)
+	a.drillDownSavedNS = ""
 	if pv, ok := a.views[ViewPods].(*views.PodsView); ok {
 		pv.ClearOwnerFilter()
+		pv.ClearNodeFilter()
 	}
 }
 
@@ -561,6 +576,16 @@ func (a *App) dispatchInformerData(vt ViewType) tea.Cmd {
 		return func() tea.Msg { return views.HelmReleasesLoadedMsg{Releases: releases, Err: err} }
 	}
 	return nil
+}
+
+// isClusterScopedView returns true if the active view shows cluster-scoped resources.
+func (a *App) isClusterScopedView() bool {
+	switch a.activeView {
+	case ViewNodes, ViewPVs:
+		return true
+	default:
+		return false
+	}
 }
 
 // isResourceListView returns true if the active view is a resource list (not describe/logs/yaml/xray/timeline/containers)

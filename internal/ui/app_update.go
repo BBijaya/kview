@@ -396,6 +396,21 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.drillDown(ViewType(msg.View))
 
 	// Handle drill-down from Deployment to filtered Pods
+	case views.DrillDownNodeMsg:
+		// Save current namespace and switch to all-namespaces for node pods
+		a.drillDownSavedNS = a.namespace
+		if a.namespace != "" {
+			a.namespace = ""
+			a.propagateNamespace("")
+			a.header.SetNamespace("all")
+			a.setInformersNamespace("")
+		}
+		if pv, ok := a.views[ViewPods].(*views.PodsView); ok {
+			pv.SetNodeFilter(msg.NodeName)
+		}
+		a.header.SetViewName("Pods (" + msg.NodeName + ")")
+		return a, a.drillDown(ViewPods)
+
 	case views.DrillDownDeploymentMsg:
 		if pv, ok := a.views[ViewPods].(*views.PodsView); ok {
 			pv.SetOwnerFilter("Deployment", msg.DeploymentName)
@@ -883,8 +898,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.header.SetNamespace(ns)
 			a.setStatus("Switched to namespace: "+ns, false)
 		}
-		// Go back to previous view and refresh via informers
-		a.activeView = a.previousView
+		// Go back to previous view; redirect cluster-scoped views to Pods
+		dest := a.previousView
+		if dest == ViewNodes || dest == ViewPVs {
+			dest = ViewPods
+		}
+		a.activeView = dest
 		a.loading = true
 		var nsCmds []tea.Cmd
 		nsCmds = append(nsCmds, a.toasts.PushInfo("Namespace", "Switched to "+nsLabel))
