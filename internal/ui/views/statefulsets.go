@@ -111,13 +111,12 @@ func (v *StatefulSetsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			if row := v.table.SelectedRow(); row != nil {
 				for _, sts := range v.statefulsets {
 					if sts.UID == row.ID {
+						sts := sts
 						return v, func() tea.Msg {
-							return ResourceSelectedMsg{
-								Kind:      "StatefulSet",
-								Resource:  "statefulsets",
+							return DrillDownToPodsMsg{
+								OwnerKind: "StatefulSet",
+								OwnerName: sts.Name,
 								Namespace: sts.Namespace,
-								Name:      sts.Name,
-								UID:       sts.UID,
 							}
 						}
 					}

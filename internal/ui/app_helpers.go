@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -34,6 +35,12 @@ func (a *App) switchView(viewType ViewType) tea.Cmd {
 // Pushes the current view onto the stack so goBack() can return to it.
 // Saves the current view's filter so it can be restored on goBack().
 func (a *App) drillDown(viewType ViewType) tea.Cmd {
+	return a.drillDownWithContext(viewType, "")
+}
+
+// drillDownWithContext performs drill-down navigation with a context label.
+// The context is shown in the body frame label (e.g. "Pods(deploy-name)[3]").
+func (a *App) drillDownWithContext(viewType ViewType, context string) tea.Cmd {
 	// Save filter of the current view before drill-down
 	if view, ok := a.views[a.activeView]; ok {
 		if ta, ok := view.(views.TableAccess); ok {
@@ -42,7 +49,11 @@ func (a *App) drillDown(viewType ViewType) tea.Cmd {
 			}
 		}
 	}
-	a.viewStack = append(a.viewStack, a.activeView)
+	a.viewStack = append(a.viewStack, drillDownEntry{
+		View:         a.activeView,
+		DrillContext: a.drillContext,
+	})
+	a.drillContext = context
 	return a.doSwitchView(viewType)
 }
 
@@ -70,20 +81,27 @@ func (a *App) goBack() tea.Cmd {
 			}
 			pv.ClearOwnerFilter()
 			pv.ClearNodeFilter()
+			pv.ClearLabelSelector()
+		}
+	}
+	if a.activeView == ViewJobs {
+		if jv, ok := a.views[ViewJobs].(*views.JobsView); ok {
+			jv.ClearOwnerFilter()
 		}
 	}
 	prev := a.viewStack[len(a.viewStack)-1]
 	a.viewStack = a.viewStack[:len(a.viewStack)-1]
-	cmd := a.doSwitchView(prev)
+	a.drillContext = prev.DrillContext
+	cmd := a.doSwitchView(prev.View)
 
 	// Restore saved filter on the destination view
-	if f, ok := a.savedFilters[prev]; ok {
-		if view, ok := a.views[prev]; ok {
+	if f, ok := a.savedFilters[prev.View]; ok {
+		if view, ok := a.views[prev.View]; ok {
 			if ta, ok := view.(views.TableAccess); ok {
 				ta.GetTable().SetFilterPreserveCursor(f)
 			}
 		}
-		delete(a.savedFilters, prev)
+		delete(a.savedFilters, prev.View)
 	}
 
 	return cmd
@@ -94,9 +112,14 @@ func (a *App) clearDrillDownState() {
 	a.viewStack = nil
 	a.savedFilters = make(map[ViewType]string)
 	a.drillDownSavedNS = ""
+	a.drillContext = ""
 	if pv, ok := a.views[ViewPods].(*views.PodsView); ok {
 		pv.ClearOwnerFilter()
 		pv.ClearNodeFilter()
+		pv.ClearLabelSelector()
+	}
+	if jv, ok := a.views[ViewJobs].(*views.JobsView); ok {
+		jv.ClearOwnerFilter()
 	}
 }
 
@@ -595,6 +618,44 @@ func (a *App) isResourceListView() bool {
 		return false
 	default:
 		return true
+	}
+}
+
+// kindToAPIResource converts a Kubernetes Kind name to its plural API resource name.
+func kindToAPIResource(kind string) string {
+	switch kind {
+	case "Pod":
+		return "pods"
+	case "Deployment":
+		return "deployments"
+	case "ReplicaSet":
+		return "replicasets"
+	case "DaemonSet":
+		return "daemonsets"
+	case "StatefulSet":
+		return "statefulsets"
+	case "Service":
+		return "services"
+	case "ConfigMap":
+		return "configmaps"
+	case "Secret":
+		return "secrets"
+	case "Ingress":
+		return "ingresses"
+	case "PersistentVolumeClaim":
+		return "persistentvolumeclaims"
+	case "PersistentVolume":
+		return "persistentvolumes"
+	case "Job":
+		return "jobs"
+	case "CronJob":
+		return "cronjobs"
+	case "Node":
+		return "nodes"
+	case "HorizontalPodAutoscaler":
+		return "horizontalpodautoscalers"
+	default:
+		return strings.ToLower(kind) + "s"
 	}
 }
 

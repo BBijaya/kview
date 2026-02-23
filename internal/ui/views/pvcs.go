@@ -115,6 +115,17 @@ func (v *PVCsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			if row := v.table.SelectedRow(); row != nil {
 				for _, pvc := range v.pvcs {
 					if pvc.UID == row.ID {
+						if pvc.Volume != "" {
+							volumeName := pvc.Volume
+							return v, func() tea.Msg {
+								return NavigateToResourceMsg{
+									Kind:      "PersistentVolume",
+									Name:      volumeName,
+									Namespace: "", // PVs are cluster-scoped
+								}
+							}
+						}
+						// Unbound PVC — fall through to ResourceSelectedMsg
 						return v, func() tea.Msg {
 							return ResourceSelectedMsg{
 								Kind:      "PersistentVolumeClaim",

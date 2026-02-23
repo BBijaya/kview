@@ -104,6 +104,22 @@ func (v *PVsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			if row := v.table.SelectedRow(); row != nil {
 				for _, pv := range v.pvs {
 					if pv.UID == row.ID {
+						if pv.Claim != "" {
+							// Parse "namespace/name" format
+							parts := strings.SplitN(pv.Claim, "/", 2)
+							if len(parts) == 2 {
+								claimNS := parts[0]
+								claimName := parts[1]
+								return v, func() tea.Msg {
+									return NavigateToResourceMsg{
+										Kind:      "PersistentVolumeClaim",
+										Name:      claimName,
+										Namespace: claimNS,
+									}
+								}
+							}
+						}
+						// Unbound PV — fall through to ResourceSelectedMsg
 						return v, func() tea.Msg {
 							return ResourceSelectedMsg{
 								Kind:     "PersistentVolume",

@@ -114,13 +114,11 @@ func (v *CronJobsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			if row := v.table.SelectedRow(); row != nil {
 				for _, cj := range v.cronjobs {
 					if cj.UID == row.ID {
+						cj := cj
 						return v, func() tea.Msg {
-							return ResourceSelectedMsg{
-								Kind:      "CronJob",
-								Resource:  "cronjobs",
-								Namespace: cj.Namespace,
-								Name:      cj.Name,
-								UID:       cj.UID,
+							return DrillDownCronJobMsg{
+								CronJobName: cj.Name,
+								Namespace:   cj.Namespace,
 							}
 						}
 					}

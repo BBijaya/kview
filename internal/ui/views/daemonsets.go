@@ -114,13 +114,12 @@ func (v *DaemonSetsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			if row := v.table.SelectedRow(); row != nil {
 				for _, ds := range v.daemonsets {
 					if ds.UID == row.ID {
+						ds := ds
 						return v, func() tea.Msg {
-							return ResourceSelectedMsg{
-								Kind:      "DaemonSet",
-								Resource:  "daemonsets",
+							return DrillDownToPodsMsg{
+								OwnerKind: "DaemonSet",
+								OwnerName: ds.Name,
 								Namespace: ds.Namespace,
-								Name:      ds.Name,
-								UID:       ds.UID,
 							}
 						}
 					}

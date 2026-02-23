@@ -113,13 +113,12 @@ func (v *ReplicaSetsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			if row := v.table.SelectedRow(); row != nil {
 				for _, rs := range v.replicasets {
 					if rs.UID == row.ID {
+						rs := rs
 						return v, func() tea.Msg {
-							return ResourceSelectedMsg{
-								Kind:      "ReplicaSet",
-								Resource:  "replicasets",
+							return DrillDownToPodsMsg{
+								OwnerKind: "ReplicaSet",
+								OwnerName: rs.Name,
 								Namespace: rs.Namespace,
-								Name:      rs.Name,
-								UID:       rs.UID,
 							}
 						}
 					}
