@@ -210,7 +210,7 @@ func (v *LogsView) Update(msg tea.Msg) (View, tea.Cmd) {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			// Stop streaming before switching views
 			v.stopStreaming()
-			v.clearSearch()
+			v.ClearSearch()
 			return v, func() tea.Msg {
 				return GoBackMsg{}
 			}
@@ -271,7 +271,7 @@ func (v *LogsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.logs.Reset()
 			v.logLines = nil
 			v.highlightedLines = nil
-			v.clearSearch()
+			v.ClearSearch()
 			v.viewport.SetContent("")
 
 		default:
@@ -414,7 +414,7 @@ func (v *LogsView) Content() string {
 // Empty pattern clears the search.
 func (v *LogsView) ApplySearch(pattern string) {
 	if pattern == "" {
-		v.clearSearch()
+		v.ClearSearch()
 		v.updateViewportContent()
 		return
 	}
@@ -546,6 +546,11 @@ func (v *LogsView) waitForLogLine(ch <-chan string, gen uint64) tea.Cmd {
 	}
 }
 
+// StopStreaming stops the log streaming (exported for cleanup from app).
+func (v *LogsView) StopStreaming() {
+	v.stopStreaming()
+}
+
 // stopStreaming stops the log streaming
 func (v *LogsView) stopStreaming() {
 	if v.streamCancel != nil {
@@ -648,8 +653,9 @@ func (v *LogsView) jumpToMatch(cursor int) {
 	}
 }
 
-// clearSearch clears the search state and reverts highlighting
-func (v *LogsView) clearSearch() {
+// ClearSearch clears the search state and reverts highlighting.
+// Implements ViewportSearcher.
+func (v *LogsView) ClearSearch() {
 	v.searchPattern = ""
 	v.searchRegex = nil
 	v.searchMatches = nil

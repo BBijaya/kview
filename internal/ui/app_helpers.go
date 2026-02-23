@@ -89,6 +89,14 @@ func (a *App) goBack() tea.Cmd {
 			jv.ClearOwnerFilter()
 		}
 	}
+	// Clean up log streaming
+	if a.activeView == ViewLogs {
+		a.logsView.StopStreaming()
+	}
+	// Clean up search state for viewport-searchable views
+	if vs, ok := a.views[a.activeView].(views.ViewportSearcher); ok {
+		vs.ClearSearch()
+	}
 	prev := a.viewStack[len(a.viewStack)-1]
 	a.viewStack = a.viewStack[:len(a.viewStack)-1]
 	a.drillContext = prev.DrillContext

@@ -116,14 +116,20 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, a.loadCommandCompletions()
 
 		case key.Matches(msg, DefaultKeyMap().Filter):
-			// Enter filter mode (resource list views and log view)
-			if a.isResourceListView() || a.activeView == ViewLogs {
+			// Enter filter mode (resource list views and viewport-searchable views)
+			canFilter := a.isResourceListView()
+			if !canFilter {
+				if _, ok := a.views[a.activeView].(views.ViewportSearcher); ok {
+					canFilter = true
+				}
+			}
+			if canFilter {
 				a.inputMode = ModeFilter
 				a.searchInput.SetWidth(a.width - 2)
 				a.searchInput.Show()
-				// Pre-populate with existing search pattern in log view
-				if a.activeView == ViewLogs {
-					if pattern := a.logsView.ActiveSearchPattern(); pattern != "" {
+				// Pre-populate with existing search pattern
+				if vs, ok := a.views[a.activeView].(views.ViewportSearcher); ok {
+					if pattern := vs.ActiveSearchPattern(); pattern != "" {
 						a.searchInput.SetValue(pattern)
 					}
 				}
@@ -366,10 +372,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case components.FilterChangedMsg:
-		if a.activeView == ViewLogs {
-			break // No live filtering for log search (partial regex patterns are invalid)
-		}
-		if view, ok := a.views[a.activeView]; ok {
+		if vs, ok := a.views[a.activeView].(views.ViewportSearcher); ok {
+			vs.ApplySearch(msg.Value)
+		} else if view, ok := a.views[a.activeView]; ok {
 			if ta, ok := view.(views.TableAccess); ok {
 				ta.GetTable().SetFilter(msg.Value)
 			}
@@ -377,8 +382,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case components.FilterClosedMsg:
 		a.inputMode = ModeNormal
-		if a.activeView == ViewLogs && msg.Submitted {
-			a.logsView.ApplySearch(a.searchInput.Value())
+		if msg.Submitted {
+			if vs, ok := a.views[a.activeView].(views.ViewportSearcher); ok {
+				vs.ApplySearch(a.searchInput.Value())
+			}
 		}
 		a.invalidateHeader()
 		a.updateSizes()
