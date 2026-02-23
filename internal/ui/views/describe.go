@@ -85,7 +85,11 @@ func (v *DescribeView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = nil
 			v.rawDescription = msg.RawDescription
 			v.description = msg.Description
-			v.viewport.SetContent(v.description)
+			if pattern := v.search.ActivePattern(); pattern != "" {
+				lines := strings.Split(v.rawDescription, "\n")
+				v.search.ApplySearch(pattern, lines)
+			}
+			v.updateViewportContent()
 			v.viewport.GotoTop()
 		}
 

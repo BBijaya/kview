@@ -87,7 +87,11 @@ func (v *YAMLView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = nil
 			v.rawContent = msg.RawContent
 			v.content = msg.Content
-			v.viewport.SetContent(v.content)
+			if pattern := v.search.ActivePattern(); pattern != "" {
+				lines := strings.Split(v.rawContent, "\n")
+				v.search.ApplySearch(pattern, lines)
+			}
+			v.updateViewportContent()
 			v.viewport.GotoTop()
 		}
 

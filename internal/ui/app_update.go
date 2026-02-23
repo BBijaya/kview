@@ -382,9 +382,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case components.FilterClosedMsg:
 		a.inputMode = ModeNormal
-		if msg.Submitted {
-			if vs, ok := a.views[a.activeView].(views.ViewportSearcher); ok {
+		if vs, ok := a.views[a.activeView].(views.ViewportSearcher); ok {
+			if msg.Submitted {
 				vs.ApplySearch(a.searchInput.Value())
+			} else {
+				vs.ClearSearch()
 			}
 		}
 		a.invalidateHeader()
