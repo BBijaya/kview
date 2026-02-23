@@ -301,9 +301,13 @@ func NewApp(client k8s.Client) *App {
 	return app
 }
 
-// SetStartupWarning sets a warning message to be shown as a toast on Init().
+// SetStartupWarning appends a warning message to be shown as a toast on Init().
 func (a *App) SetStartupWarning(msg string) {
-	a.startupWarning = msg
+	if a.startupWarning != "" {
+		a.startupWarning += "; " + msg
+	} else {
+		a.startupWarning = msg
+	}
 }
 
 // NewAppWithError creates a new application instance with a connection error

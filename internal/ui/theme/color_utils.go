@@ -56,6 +56,40 @@ func luminance(hex string) float64 {
 	return 0.2126*linearize(r) + 0.7152*linearize(g) + 0.0722*linearize(b)
 }
 
+// ContrastRatio returns the WCAG 2.0 contrast ratio between two hex colors.
+// Result range [1, 21]. Higher is better.
+func ContrastRatio(hex1, hex2 string) float64 {
+	l1 := luminance(hex1)
+	l2 := luminance(hex2)
+	if l1 < l2 {
+		l1, l2 = l2, l1
+	}
+	return (l1 + 0.05) / (l2 + 0.05)
+}
+
+// ValidateContrast checks critical color pairs against WCAG AA threshold (3.0:1).
+// Returns warning strings for failing pairs.
+func ValidateContrast(td ThemeDefinition) []string {
+	const threshold = 3.0
+	var warnings []string
+	pairs := [][3]string{
+		{td.Text, td.Background, "text/bg"},
+		{td.Muted, td.Background, "muted/bg"},
+		{td.Highlight, td.Background, "highlight/bg"},
+		{td.Border, td.Background, "border/bg"},
+	}
+	if td.SelectionBg != "" && td.SelectionFg != "" {
+		pairs = append(pairs, [3]string{td.SelectionFg, td.SelectionBg, "selection fg/bg"})
+	}
+	for _, p := range pairs {
+		ratio := ContrastRatio(p[0], p[1])
+		if ratio < threshold {
+			warnings = append(warnings, fmt.Sprintf("%s %.1f:1", p[2], ratio))
+		}
+	}
+	return warnings
+}
+
 // contrastForeground picks white or black foreground text based on the
 // luminance of the background color. When selectionBg is explicitly set,
 // uses that; otherwise derives from accent via darkenColor(accent, 0.6).

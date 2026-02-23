@@ -589,8 +589,8 @@ func (v *LogsView) applyHighlighting(content string) string {
 	}
 
 	highlightStyle := lipgloss.NewStyle().
-		Background(theme.ColorWarning).
-		Foreground(theme.ColorBackground)
+		Background(theme.ColorSearchHighlightBg).
+		Foreground(theme.ColorSearchHighlightFg)
 
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {

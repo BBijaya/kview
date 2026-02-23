@@ -36,6 +36,10 @@ var (
 	ColorRowNumber   = lipgloss.Color("#6B7B8F") // Gray for row numbers
 	ColorNAValue       = lipgloss.Color("#6B7B8F") // Dim for n/a values
 	ColorCompletedText = lipgloss.Color("#8B95A5") // Light grey for completed row text
+
+	// Search highlight
+	ColorSearchHighlightBg = lipgloss.Color("#F59E0B") // Warning amber
+	ColorSearchHighlightFg = lipgloss.Color("#1B1B3A") // Background dark
 )
 
 // Apply reassigns all 21 color variables from a ThemeDefinition.
@@ -87,6 +91,22 @@ func Apply(td ThemeDefinition) {
 	ColorRowNumber = lipgloss.Color(td.Muted)
 	ColorNAValue = lipgloss.Color(td.Muted)
 	ColorCompletedText = lightenColor(td.Muted, 0.15)
+
+	// Search highlight colors
+	ColorSearchHighlightBg = lipgloss.Color(td.Warning)
+	if td.SearchHighlightBg != "" {
+		ColorSearchHighlightBg = lipgloss.Color(td.SearchHighlightBg)
+	}
+	if td.SearchHighlightFg != "" {
+		ColorSearchHighlightFg = lipgloss.Color(td.SearchHighlightFg)
+	} else {
+		// Luminance-based: dark text on bright warning, bright text on dark warning
+		if luminance(td.Warning) > 0.179 {
+			ColorSearchHighlightFg = lipgloss.Color("#000000")
+		} else {
+			ColorSearchHighlightFg = lipgloss.Color("#FFFFFF")
+		}
+	}
 }
 
 // Status icons

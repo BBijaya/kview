@@ -24,7 +24,14 @@ type ThemeDefinition struct {
 	SelectionFg string
 	FrameBorder string
 	SurfaceAlt  string
+
+	// Search highlight overrides
+	SearchHighlightBg string
+	SearchHighlightFg string
 }
+
+// ActiveThemeName tracks the currently active theme name.
+var ActiveThemeName string
 
 // BuiltinThemes maps theme names to their color definitions.
 var BuiltinThemes = map[string]ThemeDefinition{
@@ -117,7 +124,7 @@ var BuiltinThemes = map[string]ThemeDefinition{
 		Surface:    "#073642",
 		Text:       "#839496",
 		Muted:      "#586E75",
-		Border:     "#073642",
+		Border:     "#2E4F5C",
 		Highlight:  "#268BD2",
 		Primary:    "#6C71C4",
 		Accent:     "#2AA198",
@@ -409,6 +416,12 @@ func ResolveTheme(name string, overrides ThemeDefinition) (ThemeDefinition, bool
 	if overrides.SurfaceAlt != "" {
 		td.SurfaceAlt = overrides.SurfaceAlt
 	}
+	if overrides.SearchHighlightBg != "" {
+		td.SearchHighlightBg = overrides.SearchHighlightBg
+	}
+	if overrides.SearchHighlightFg != "" {
+		td.SearchHighlightFg = overrides.SearchHighlightFg
+	}
 
 	return td, ok
 }
@@ -431,7 +444,9 @@ func ThemeDefinitionFromConfig(tc config.ThemeColors) ThemeDefinition {
 		Info:        tc.Info,
 		SelectionBg: tc.SelectionBg,
 		SelectionFg: tc.SelectionFg,
-		FrameBorder: tc.FrameBorder,
-		SurfaceAlt:  tc.SurfaceAlt,
+		FrameBorder:       tc.FrameBorder,
+		SurfaceAlt:        tc.SurfaceAlt,
+		SearchHighlightBg: tc.SearchHighlightBg,
+		SearchHighlightFg: tc.SearchHighlightFg,
 	}
 }

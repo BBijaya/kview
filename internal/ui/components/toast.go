@@ -142,6 +142,12 @@ func (t *ToastStack) View() string {
 	}
 
 	toastWidth := 40
+	for _, toast := range t.toasts {
+		if strings.Contains(toast.Message, "\n") {
+			toastWidth = 50
+			break
+		}
+	}
 	if t.width > 0 && toastWidth > t.width-10 {
 		toastWidth = t.width - 10
 	}
@@ -235,9 +241,13 @@ func (t *ToastStack) renderToast(toast Toast, width int) string {
 	content.WriteString(titleStyle.Render(icon + " " + toast.Title))
 	if toast.Message != "" {
 		content.WriteString("\n")
-		// Word wrap message
-		wrappedMsg := wrapText(toast.Message, width-4)
-		content.WriteString(messageStyle.Render(wrappedMsg))
+		var renderedMsg string
+		if strings.Contains(toast.Message, "\n") {
+			renderedMsg = toast.Message // Pre-formatted, preserve layout
+		} else {
+			renderedMsg = wrapText(toast.Message, width-4)
+		}
+		content.WriteString(messageStyle.Render(renderedMsg))
 	}
 
 	return toastStyle.Render(content.String())

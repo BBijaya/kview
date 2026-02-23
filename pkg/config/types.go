@@ -59,4 +59,8 @@ type ThemeColors struct {
 	SelectionFg string `yaml:"selectionFg,omitempty"`
 	FrameBorder string `yaml:"frameBorder,omitempty"`
 	SurfaceAlt  string `yaml:"surfaceAlt,omitempty"`
+
+	// Search highlight overrides
+	SearchHighlightBg string `yaml:"searchHighlightBg,omitempty"`
+	SearchHighlightFg string `yaml:"searchHighlightFg,omitempty"`
 }
