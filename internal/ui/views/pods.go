@@ -120,6 +120,9 @@ type PodsView struct {
 	// Drill-down owner filter (set when navigating from Deployments)
 	ownerKind string // e.g. "Deployment"
 	ownerName string // e.g. "nginx"
+
+	// Drill-down node filter (set when navigating from Nodes)
+	nodeFilter string // e.g. "minikube"
 }
 
 // NewPodsView creates a new pods view
@@ -195,7 +198,7 @@ func (v *PodsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			return v, nil
 
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
-			if v.HasOwnerFilter() {
+			if v.HasOwnerFilter() || v.HasNodeFilter() {
 				return v, func() tea.Msg { return GoBackMsg{} }
 			}
 
@@ -443,6 +446,23 @@ func (v *PodsView) HasOwnerFilter() bool {
 	return v.ownerName != ""
 }
 
+// SetNodeFilter sets a drill-down node filter (from Nodes view)
+func (v *PodsView) SetNodeFilter(nodeName string) {
+	v.nodeFilter = nodeName
+	v.updateTable()
+}
+
+// ClearNodeFilter removes the drill-down node filter
+func (v *PodsView) ClearNodeFilter() {
+	v.nodeFilter = ""
+	v.updateTable()
+}
+
+// HasNodeFilter returns whether a node filter is active
+func (v *PodsView) HasNodeFilter() bool {
+	return v.nodeFilter != ""
+}
+
 // SelectedPod returns the currently selected pod
 func (v *PodsView) SelectedPod() *k8s.PodInfo {
 	if row := v.table.SelectedRow(); row != nil {
@@ -461,14 +481,18 @@ func (v *PodsView) RowCount() int {
 }
 
 func (v *PodsView) filteredPods() []k8s.PodInfo {
-	if v.ownerName == "" {
+	if v.ownerName == "" && v.nodeFilter == "" {
 		return v.pods
 	}
 	var filtered []k8s.PodInfo
 	for _, pod := range v.pods {
-		if v.matchesOwnerFilter(pod) {
-			filtered = append(filtered, pod)
+		if v.nodeFilter != "" && pod.NodeName != v.nodeFilter {
+			continue
 		}
+		if v.ownerName != "" && !v.matchesOwnerFilter(pod) {
+			continue
+		}
+		filtered = append(filtered, pod)
 	}
 	return filtered
 }

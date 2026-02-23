@@ -126,13 +126,9 @@ func (v *NodesView) Update(msg tea.Msg) (View, tea.Cmd) {
 			if row := v.table.SelectedRow(); row != nil {
 				for _, node := range v.nodes {
 					if node.UID == row.ID {
+						name := node.Name
 						return v, func() tea.Msg {
-							return ResourceSelectedMsg{
-								Kind:     "Node",
-								Resource: "nodes",
-								Name:     node.Name,
-								UID:      node.UID,
-							}
+							return DrillDownNodeMsg{NodeName: name}
 						}
 					}
 				}

@@ -38,6 +38,11 @@ type DrillDownDeploymentMsg struct {
 	Namespace      string
 }
 
+// DrillDownNodeMsg requests drill-down from node to its pods (all namespaces)
+type DrillDownNodeMsg struct {
+	NodeName string
+}
+
 // DrillDownContainersMsg requests drill-down from pod to containers
 type DrillDownContainersMsg struct {
 	Pod k8s.PodInfo

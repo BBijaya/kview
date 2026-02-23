@@ -95,6 +95,11 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 			}
 			a.loading = true
 			a.setInformersNamespace(a.namespace)
+			// Navigate away from cluster-scoped views on namespace switch
+			if a.isClusterScopedView() {
+				a.clearDrillDownState()
+				return tea.Batch(a.dataPollImmediateCmd(), a.doSwitchView(ViewPods))
+			}
 			return a.dataPollImmediateCmd()
 		}
 		return a.loadNamespaces()
