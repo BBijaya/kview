@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/muesli/cancelreader"
 	"golang.org/x/term"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -100,13 +101,33 @@ func (c *ShellExecCmd) Run() error {
 		return fmt.Errorf("failed to create executor: %w", err)
 	}
 
+	// Wrap stdin in a cancelreader so we can kill the SPDY stdin copier
+	// goroutine after the shell exits. Without this, the SPDY goroutine
+	// remains blocked on os.Stdin.Read() and races with Bubble Tea's new
+	// readLoop for the first keystroke — causing it to be silently consumed
+	// and discarded. The cancelreader uses epoll (Linux) / select (BSD) to
+	// wait on stdin, so Cancel() interrupts it without consuming any data.
+	stdinReader := c.stdin
+	cr, crErr := cancelreader.NewReader(c.stdin)
+	if crErr == nil {
+		stdinReader = cr
+	}
+
 	streamErr := exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
-		Stdin:             c.stdin,
+		Stdin:             stdinReader,
 		Stdout:            os.Stdout,
 		Stderr:            os.Stderr,
 		Tty:               true,
 		TerminalSizeQueue: tsq,
 	})
+
+	// Kill the leaked SPDY stdin copier goroutine before returning.
+	// This must happen before Bubble Tea's RestoreTerminal() creates its
+	// new readLoop, so nothing competes for os.Stdin.
+	if crErr == nil {
+		cr.Cancel()
+		cr.Close()
+	}
 
 	// No post-shell screen clear needed. Bubble Tea's RestoreTerminal() enters
 	// a fresh alt-screen buffer (ESC[?1049h + ESC[2J + ESC[H) automatically.
