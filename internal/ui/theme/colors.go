@@ -40,6 +40,12 @@ var (
 	// Search highlight
 	ColorSearchHighlightBg = lipgloss.Color("#F59E0B") // Warning amber
 	ColorSearchHighlightFg = lipgloss.Color("#1B1B3A") // Background dark
+
+	// Delta row coloring
+	ColorDeltaAdd    = lipgloss.Color("#87CEEB") // Sky blue - new resource
+	ColorDeltaModify = lipgloss.Color("#B0C4DE") // Light steel blue - changed resource
+	ColorDeltaError  = lipgloss.Color("#E08080") // Soft coral - unhealthy resource
+	ColorDeltaDelete = lipgloss.Color("#708090") // Slate gray - future use
 )
 
 // Apply reassigns all 21 color variables from a ThemeDefinition.
@@ -106,6 +112,28 @@ func Apply(td ThemeDefinition) {
 		} else {
 			ColorSearchHighlightFg = lipgloss.Color("#FFFFFF")
 		}
+	}
+
+	// Delta row colors
+	if td.DeltaAdd != "" {
+		ColorDeltaAdd = lipgloss.Color(td.DeltaAdd)
+	} else {
+		ColorDeltaAdd = lightenColor(td.Info, 0.3)
+	}
+	if td.DeltaModify != "" {
+		ColorDeltaModify = lipgloss.Color(td.DeltaModify)
+	} else {
+		ColorDeltaModify = blendColor(td.Highlight, td.Muted, 0.4)
+	}
+	if td.DeltaError != "" {
+		ColorDeltaError = lipgloss.Color(td.DeltaError)
+	} else {
+		ColorDeltaError = lightenColor(td.Error, 0.2)
+	}
+	if td.DeltaDelete != "" {
+		ColorDeltaDelete = lipgloss.Color(td.DeltaDelete)
+	} else {
+		ColorDeltaDelete = lipgloss.Color(td.Muted)
 	}
 }
 

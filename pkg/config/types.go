@@ -63,4 +63,10 @@ type ThemeColors struct {
 	// Search highlight overrides
 	SearchHighlightBg string `yaml:"searchHighlightBg,omitempty"`
 	SearchHighlightFg string `yaml:"searchHighlightFg,omitempty"`
+
+	// Delta row color overrides
+	DeltaAdd    string `yaml:"deltaAdd,omitempty"`
+	DeltaModify string `yaml:"deltaModify,omitempty"`
+	DeltaError  string `yaml:"deltaError,omitempty"`
+	DeltaDelete string `yaml:"deltaDelete,omitempty"`
 }

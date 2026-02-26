@@ -43,6 +43,9 @@ type Header struct {
 
 	// Index of active resource within current category (for tab highlighting)
 	activeResourceIdx int
+
+	// Delta filter indicator
+	deltaFilterActive bool
 }
 
 // NewHeader creates a new header component
@@ -155,6 +158,11 @@ func (h *Header) SetFilter(active bool, text string) {
 	h.filterText = text
 }
 
+// SetDeltaFilter sets the delta filter indicator
+func (h *Header) SetDeltaFilter(active bool) {
+	h.deltaFilterActive = active
+}
+
 // SetTabs sets the available tabs
 func (h *Header) SetTabs(tabs []string) {
 	h.tabs = tabs
@@ -208,6 +216,11 @@ func (h *Header) View() string {
 	if h.filterActive && h.filterText != "" {
 		breadcrumb += theme.Styles.HeaderSeparator.Render(" > ") +
 			theme.Styles.HeaderNamespace.Render("["+h.filterText+"]")
+	}
+
+	if h.deltaFilterActive {
+		breadcrumb += theme.Styles.HeaderSeparator.Render(" > ") +
+			theme.Styles.StatusError.Render("[ERRORS]")
 	}
 
 	// Calculate padding
@@ -411,6 +424,7 @@ func (h *Header) getFilterHintRows() []string {
 		fmtKey("!", "invert") + sep + fmtKey("-f", "fuzzy"),
 		fmtKey("-l", "label"),
 		fmtKey("S", "sort") + sep + fmtKey("[", "prev") + sep + fmtKey("]", "next"),
+		fmtKey("ctrl+z", "errors"),
 	}
 }
 

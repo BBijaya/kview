@@ -167,6 +167,15 @@ func (a *App) doSwitchView(viewType ViewType) tea.Cmd {
 	a.header.SetViewName(viewName)
 	a.header.SetCategoryName(a.getCategoryName())
 
+	// Sync delta filter indicator with the new view's table state
+	deltaActive := false
+	if view, ok := a.views[viewType]; ok {
+		if ta, ok := view.(views.TableAccess); ok {
+			deltaActive = ta.GetTable().IsDeltaFilterActive()
+		}
+	}
+	a.header.SetDeltaFilter(deltaActive)
+
 	var cmds []tea.Cmd
 
 	if a.isInformerView(viewType) {

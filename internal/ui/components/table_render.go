@@ -42,6 +42,20 @@ func (t *Table) renderRowString(rowIdx int, isSelected bool, ctx *renderContext)
 	if isCompletedRow {
 		completedFg = theme.ColorCompletedText
 	}
+
+	// Delta row coloring (whole-row foreground override, higher priority than completed)
+	isDeltaRow := !isSelected && row.DeltaState != DeltaNone
+	var deltaFg lipgloss.TerminalColor
+	if isDeltaRow {
+		switch row.DeltaState {
+		case DeltaError:
+			deltaFg = theme.ColorDeltaError
+		case DeltaAdd:
+			deltaFg = theme.ColorDeltaAdd
+		case DeltaModify:
+			deltaFg = theme.ColorDeltaModify
+		}
+	}
 	scrollIndicatorLeft := t.maxColOffset > 0 && t.colOffset > 0
 	scrollIndicatorRight := ctx.showRightIndicator
 
@@ -139,6 +153,17 @@ func (t *Table) renderRowString(rowIdx int, isSelected bool, ctx *renderContext)
 		// Apply status styling to the status column
 		if j == t.statusColumnIdx && row.Status != "" {
 			if !isSelected {
+				// Delta rows: override status cell with delta foreground
+				if isDeltaRow {
+					if t.showStatusIcons {
+						value = theme.StatusIconPrefix(row.Status) + value
+					}
+					deltaStatusStyle := lipgloss.NewStyle().
+						Foreground(deltaFg).
+						Background(theme.ColorBackground)
+					rowContent.WriteString(deltaStatusStyle.Inline(true).Width(colW).Align(t.getColumnAlign(j)).Render(theme.TruncateString(value, colW)))
+					continue
+				}
 				// Completed rows: grey text with circle icon (not green checkmark)
 				if isCompletedRow {
 					completedStatusStyle := lipgloss.NewStyle().
@@ -170,6 +195,12 @@ func (t *Table) renderRowString(rowIdx int, isSelected bool, ctx *renderContext)
 			// Truncated column: override pre-computed width
 			if isSelected {
 				rowContent.WriteString(ctx.colStyles[j].selected.Width(colW).Render(theme.TruncateString(value, colW)))
+			} else if isDeltaRow {
+				style := ctx.colStyles[j].normal.Foreground(deltaFg)
+				if isAltRow {
+					style = ctx.colStyles[j].alt.Foreground(deltaFg)
+				}
+				rowContent.WriteString(style.Width(colW).Render(theme.TruncateString(value, colW)))
 			} else if isCompletedRow {
 				style := ctx.colStyles[j].normal.Foreground(completedFg)
 				if isAltRow {
@@ -184,6 +215,12 @@ func (t *Table) renderRowString(rowIdx int, isSelected bool, ctx *renderContext)
 		} else {
 			if isSelected {
 				rowContent.WriteString(ctx.colStyles[j].selected.Render(theme.TruncateString(value, colW)))
+			} else if isDeltaRow {
+				style := ctx.colStyles[j].normal.Foreground(deltaFg)
+				if isAltRow {
+					style = ctx.colStyles[j].alt.Foreground(deltaFg)
+				}
+				rowContent.WriteString(style.Render(theme.TruncateString(value, colW)))
 			} else if isCompletedRow {
 				style := ctx.colStyles[j].normal.Foreground(completedFg)
 				if isAltRow {

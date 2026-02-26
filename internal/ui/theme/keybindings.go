@@ -87,6 +87,9 @@ type KeyMap struct {
 	LogTimeRange  key.Binding
 	LogWrap       key.Binding
 
+	// Delta filter
+	DeltaFilter key.Binding
+
 	// General
 	Help key.Binding
 	Quit key.Binding
@@ -326,6 +329,10 @@ func DefaultKeyMap() KeyMap {
 		LogWrap: key.NewBinding(
 			key.WithKeys("w"),
 			key.WithHelp("w", "wrap"),
+		),
+		DeltaFilter: key.NewBinding(
+			key.WithKeys("ctrl+z"),
+			key.WithHelp("ctrl+z", "errors"),
 		),
 		Confirm: key.NewBinding(
 			key.WithKeys("enter"),

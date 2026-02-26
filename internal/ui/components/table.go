@@ -16,6 +16,17 @@ type ScrollEvent struct {
 	NewLine   string
 }
 
+// DeltaState indicates whether a row is new, modified, or unhealthy
+// compared to the previous data snapshot.
+type DeltaState uint8
+
+const (
+	DeltaNone   DeltaState = iota
+	DeltaAdd               // Resource just appeared
+	DeltaModify            // Resource values changed
+	DeltaError             // Resource is unhealthy
+)
+
 // Column represents a table column
 type Column struct {
 	Title     string
@@ -28,10 +39,11 @@ type Column struct {
 
 // Row represents a table row
 type Row struct {
-	ID     string            // Unique identifier for the row
-	Values []string          // Cell values
-	Status string            // Status for color coding
-	Labels map[string]string // Kubernetes labels for -l filter
+	ID         string            // Unique identifier for the row
+	Values     []string          // Cell values
+	Status     string            // Status for color coding
+	Labels     map[string]string // Kubernetes labels for -l filter
+	DeltaState DeltaState        // Set by Table during SetRows()
 }
 
 // precomputedColStyle holds pre-built styles for a single column, avoiding
@@ -129,6 +141,11 @@ type Table struct {
 	prevOffset     int
 	scrollEvent    *ScrollEvent
 	bulkScrolled   bool // true when offset changed by >1 (page up/down, home/end)
+
+	// Delta tracking: detects new/modified/unhealthy rows between SetRows calls
+	prevRows          map[string][]string // ID → Values from previous SetRows
+	hasPrevSnapshot   bool
+	deltaFilterActive bool // when true, only show DeltaError rows
 }
 
 // NewTable creates a new table component
@@ -252,6 +269,37 @@ func (t *Table) ValidateCursor() {
 
 // SetRows sets the table rows, preserving cursor position by ID
 func (t *Table) SetRows(rows []Row) {
+	// --- Delta tracking ---
+	if t.hasPrevSnapshot {
+		for i := range rows {
+			if prev, exists := t.prevRows[rows[i].ID]; !exists {
+				rows[i].DeltaState = DeltaAdd
+			} else if !slicesEqual(prev, rows[i].Values) {
+				rows[i].DeltaState = DeltaModify
+			}
+			// Error overrides add/modify
+			if theme.IsDeltaErrorStatus(rows[i].Status) {
+				rows[i].DeltaState = DeltaError
+			}
+		}
+	} else {
+		// First load: only mark errors, not everything as "new"
+		for i := range rows {
+			if theme.IsDeltaErrorStatus(rows[i].Status) {
+				rows[i].DeltaState = DeltaError
+			}
+		}
+	}
+	// Save current as prev for next comparison
+	t.prevRows = make(map[string][]string, len(rows))
+	for _, r := range rows {
+		cp := make([]string, len(r.Values))
+		copy(cp, r.Values)
+		t.prevRows[r.ID] = cp
+	}
+	t.hasPrevSnapshot = true
+	// --- End delta tracking ---
+
 	// Save current selection before replacing rows
 	var selectedID string
 	savedCursor := t.cursor
@@ -591,4 +639,42 @@ func (t *Table) ClearSort() {
 // col is -1 when unsorted.
 func (t *Table) SortedColumn() (col int, asc bool) {
 	return t.sortCol, t.sortAsc
+}
+
+// ToggleDeltaFilter toggles the error-only filter (Ctrl+Z).
+func (t *Table) ToggleDeltaFilter() {
+	t.deltaFilterActive = !t.deltaFilterActive
+	t.applyFilter()
+	t.cacheGen++
+	t.cursor = 0
+	t.offset = 0
+}
+
+// IsDeltaFilterActive returns whether the delta error filter is active.
+func (t *Table) IsDeltaFilterActive() bool {
+	return t.deltaFilterActive
+}
+
+// ClearDeltas resets all delta states to DeltaNone.
+func (t *Table) ClearDeltas() {
+	for i := range t.rows {
+		t.rows[i].DeltaState = DeltaNone
+	}
+	for i := range t.filteredRows {
+		t.filteredRows[i].DeltaState = DeltaNone
+	}
+	t.cacheGen++
+}
+
+// slicesEqual compares two string slices for equality.
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
