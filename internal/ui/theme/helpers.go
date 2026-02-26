@@ -39,6 +39,19 @@ func StatusCellStyle(status string) lipgloss.Style {
 	}
 }
 
+// IsDeltaErrorStatus returns true if the status represents an unhealthy state
+// that should be highlighted with delta error coloring.
+func IsDeltaErrorStatus(status string) bool {
+	switch status {
+	case "Failed", "Error", "CrashLoopBackOff", "ImagePullBackOff",
+		"ErrImagePull", "Terminating", "OOMKilled",
+		"Warning", "Degraded":
+		return true
+	default:
+		return false
+	}
+}
+
 // TruncateWithIndicator truncates a string with a styled "..." indicator
 func TruncateWithIndicator(s string, maxLen int) string {
 	if len(s) <= maxLen {

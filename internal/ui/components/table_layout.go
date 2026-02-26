@@ -42,34 +42,63 @@ func (t *Table) measureContentWidths() {
 func (t *Table) applyFilter() {
 	if t.filter == "" {
 		t.filteredRows = t.rows
-		t.sortFilteredRows()
-		return
-	}
+	} else {
+		// Extract ! inverse prefix before mode dispatch
+		filter := t.filter
+		invert := false
+		if strings.HasPrefix(filter, "!") {
+			invert = true
+			filter = filter[1:]
+		}
 
-	// Extract ! inverse prefix before mode dispatch
-	filter := t.filter
-	invert := false
-	if strings.HasPrefix(filter, "!") {
-		invert = true
-		filter = filter[1:]
-	}
-
-	if filter == "" {
-		// "!" alone — show all rows
-		t.filteredRows = t.rows
-	} else if strings.HasPrefix(filter, "-f ") || filter == "-f" {
-		// Fuzzy filter mode
-		term := strings.TrimPrefix(filter, "-f")
-		term = strings.TrimSpace(term)
-		if term == "" {
+		if filter == "" {
+			// "!" alone — show all rows
 			t.filteredRows = t.rows
+		} else if strings.HasPrefix(filter, "-f ") || filter == "-f" {
+			// Fuzzy filter mode
+			term := strings.TrimPrefix(filter, "-f")
+			term = strings.TrimSpace(term)
+			if term == "" {
+				t.filteredRows = t.rows
+			} else {
+				term = strings.ToLower(term)
+				t.filteredRows = make([]Row, 0, len(t.rows))
+				for _, row := range t.rows {
+					matched := false
+					for _, val := range row.Values {
+						if fuzzyMatch(strings.ToLower(val), term) {
+							matched = true
+							break
+						}
+					}
+					if invert != matched {
+						t.filteredRows = append(t.filteredRows, row)
+					}
+				}
+			}
+		} else if strings.HasPrefix(filter, "-l ") || filter == "-l" {
+			// Label selector filter mode
+			selector := strings.TrimPrefix(filter, "-l")
+			selector = strings.TrimSpace(selector)
+			if selector == "" {
+				t.filteredRows = t.rows
+			} else {
+				t.filteredRows = make([]Row, 0, len(t.rows))
+				for _, row := range t.rows {
+					matched := matchLabelSelector(row.Labels, selector)
+					if invert != matched {
+						t.filteredRows = append(t.filteredRows, row)
+					}
+				}
+			}
 		} else {
-			term = strings.ToLower(term)
+			// Substring filter
+			filter = strings.ToLower(filter)
 			t.filteredRows = make([]Row, 0, len(t.rows))
 			for _, row := range t.rows {
 				matched := false
 				for _, val := range row.Values {
-					if fuzzyMatch(strings.ToLower(val), term) {
+					if strings.Contains(strings.ToLower(val), filter) {
 						matched = true
 						break
 					}
@@ -79,38 +108,19 @@ func (t *Table) applyFilter() {
 				}
 			}
 		}
-	} else if strings.HasPrefix(filter, "-l ") || filter == "-l" {
-		// Label selector filter mode
-		selector := strings.TrimPrefix(filter, "-l")
-		selector = strings.TrimSpace(selector)
-		if selector == "" {
-			t.filteredRows = t.rows
-		} else {
-			t.filteredRows = make([]Row, 0, len(t.rows))
-			for _, row := range t.rows {
-				matched := matchLabelSelector(row.Labels, selector)
-				if invert != matched {
-					t.filteredRows = append(t.filteredRows, row)
-				}
-			}
-		}
-	} else {
-		// Substring filter
-		filter = strings.ToLower(filter)
-		t.filteredRows = make([]Row, 0, len(t.rows))
-		for _, row := range t.rows {
-			matched := false
-			for _, val := range row.Values {
-				if strings.Contains(strings.ToLower(val), filter) {
-					matched = true
-					break
-				}
-			}
-			if invert != matched {
-				t.filteredRows = append(t.filteredRows, row)
-			}
-		}
 	}
+
+	// Delta error filter: keep only unhealthy rows
+	if t.deltaFilterActive {
+		filtered := make([]Row, 0, len(t.filteredRows))
+		for _, row := range t.filteredRows {
+			if row.DeltaState == DeltaError {
+				filtered = append(filtered, row)
+			}
+		}
+		t.filteredRows = filtered
+	}
+
 	t.sortFilteredRows()
 }
 

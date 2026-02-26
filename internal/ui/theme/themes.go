@@ -28,6 +28,12 @@ type ThemeDefinition struct {
 	// Search highlight overrides
 	SearchHighlightBg string
 	SearchHighlightFg string
+
+	// Delta row color overrides
+	DeltaAdd    string
+	DeltaModify string
+	DeltaError  string
+	DeltaDelete string
 }
 
 // ActiveThemeName tracks the currently active theme name.
@@ -422,6 +428,18 @@ func ResolveTheme(name string, overrides ThemeDefinition) (ThemeDefinition, bool
 	if overrides.SearchHighlightFg != "" {
 		td.SearchHighlightFg = overrides.SearchHighlightFg
 	}
+	if overrides.DeltaAdd != "" {
+		td.DeltaAdd = overrides.DeltaAdd
+	}
+	if overrides.DeltaModify != "" {
+		td.DeltaModify = overrides.DeltaModify
+	}
+	if overrides.DeltaError != "" {
+		td.DeltaError = overrides.DeltaError
+	}
+	if overrides.DeltaDelete != "" {
+		td.DeltaDelete = overrides.DeltaDelete
+	}
 
 	return td, ok
 }
@@ -448,5 +466,9 @@ func ThemeDefinitionFromConfig(tc config.ThemeColors) ThemeDefinition {
 		SurfaceAlt:        tc.SurfaceAlt,
 		SearchHighlightBg: tc.SearchHighlightBg,
 		SearchHighlightFg: tc.SearchHighlightFg,
+		DeltaAdd:          tc.DeltaAdd,
+		DeltaModify:       tc.DeltaModify,
+		DeltaError:        tc.DeltaError,
+		DeltaDelete:       tc.DeltaDelete,
 	}
 }

@@ -209,6 +209,17 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case key.Matches(msg, DefaultKeyMap().DeltaFilter):
+			if a.isResourceListView() {
+				if v, ok := a.views[a.activeView].(views.TableAccess); ok {
+					tbl := v.GetTable()
+					tbl.ToggleDeltaFilter()
+					a.header.SetDeltaFilter(tbl.IsDeltaFilterActive())
+					a.invalidateHeader()
+				}
+			}
+			return a, nil
+
 		case key.Matches(msg, DefaultKeyMap().AutoRefresh):
 			a.autoRefresh = !a.autoRefresh
 			if a.autoRefresh {
