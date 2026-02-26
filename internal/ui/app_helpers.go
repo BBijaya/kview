@@ -631,7 +631,7 @@ func (a *App) isClusterScopedView() bool {
 // isResourceListView returns true if the active view is a resource list (not describe/logs/yaml/xray/timeline/containers)
 func (a *App) isResourceListView() bool {
 	switch a.activeView {
-	case ViewDescribe, ViewLogs, ViewYAML, ViewNamespaceSelect, ViewXray, ViewTimeline, ViewContainers, ViewHelmValues, ViewHelmManifest, ViewSecretDecode, ViewHelp:
+	case ViewDescribe, ViewLogs, ViewYAML, ViewXray, ViewTimeline, ViewContainers, ViewHelmValues, ViewHelmManifest, ViewSecretDecode, ViewHelp:
 		return false
 	default:
 		return true

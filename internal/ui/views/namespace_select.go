@@ -27,7 +27,6 @@ type NamespacesListLoadedMsg struct {
 type NamespaceSelectView struct {
 	BaseView
 	table      *components.Table
-	filter     *components.SearchInput
 	client     k8s.Client
 	namespaces []k8s.NamespaceInfo
 	loading    bool
@@ -45,7 +44,6 @@ func NewNamespaceSelectView(client k8s.Client) *NamespaceSelectView {
 
 	v := &NamespaceSelectView{
 		table:   components.NewTable(columns),
-		filter:  components.NewSearchInput(),
 		client:  client,
 		spinner: components.NewSpinner(),
 	}
@@ -79,25 +77,8 @@ func (v *NamespaceSelectView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.updateTable()
 		}
 
-	case components.FilterChangedMsg:
-		v.table.SetFilter(msg.Value)
-
-	case components.FilterClosedMsg:
-		v.filter.Hide()
-
 	case tea.KeyMsg:
-		// Handle filter input first if visible
-		if v.filter.IsVisible() {
-			var cmd tea.Cmd
-			v.filter, cmd = v.filter.Update(msg)
-			return v, cmd
-		}
-
 		switch {
-		case key.Matches(msg, theme.DefaultKeyMap().Filter):
-			v.filter.Show()
-			return v, nil
-
 		case key.Matches(msg, theme.DefaultKeyMap().Enter):
 			if row := v.table.SelectedRow(); row != nil {
 				ns := row.ID
@@ -179,13 +160,7 @@ func (v *NamespaceSelectView) View() string {
 		return theme.Styles.StatusError.Render("Error: " + v.err.Error())
 	}
 
-	content := v.table.View()
-
-	if v.filter.IsVisible() {
-		content = v.filter.View() + "\n" + content
-	}
-
-	return content
+	return v.table.View()
 }
 
 // Name returns the view name
@@ -207,12 +182,7 @@ func (v *NamespaceSelectView) ShortHelp() []key.Binding {
 // SetSize sets the view dimensions
 func (v *NamespaceSelectView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
-	tableHeight := height
-	if v.filter.IsVisible() {
-		tableHeight -= 2
-	}
-	v.table.SetSize(width, tableHeight)
-	v.filter.SetWidth(width)
+	v.table.SetSize(width, height)
 }
 
 // ResetSelection resets the table cursor to the top
@@ -269,8 +239,4 @@ func (v *NamespaceSelectView) updateTable() {
 // GetTable returns the underlying table component.
 func (v *NamespaceSelectView) GetTable() *components.Table {
 	return v.table
-}
-
-func (v *NamespaceSelectView) IsFilterVisible() bool {
-	return v.filter.IsVisible()
 }
