@@ -15,6 +15,8 @@ A powerful terminal-based Kubernetes cluster viewer inspired by [k9s](https://k9
 - **Command Palette** — Fuzzy-search command access (`Ctrl+P`)
 - **Live Search & Filter** — `/` for search in detail views and table filtering, with inverse (`!`), fuzzy (`-f`), and label selector (`-l`) modes
 - **Column Sorting** — `S`/`[`/`]` keys, numeric-aware, persists across refresh
+- **Delta Marking** — Color-coded rows for new (blue), modified (steel blue), and unhealthy (coral) resources with `Ctrl+Z` error zoom
+- **21 Built-in Themes** — Dracula, Catppuccin, Tokyo Night, Nord, Gruvbox, and more with full color customization
 - **Secret Decode** — Base64 decode with `x` key in Secrets view
 - **Edit Resources** — `e` key opens resource in `$EDITOR`, diffs and applies changes
 - **Event Timeline** — Chronological event view with correlation
@@ -80,9 +82,12 @@ go build ./cmd/kview && ./kview
 | Key | Action |
 |-----|--------|
 | `↑`/`↓` or `j`/`k` | Navigate up/down |
-| `PgUp`/`PgDn` | Page up/down |
-| `Home`/`g` / `End`/`G` | Jump to top/bottom |
+| `PgUp`/`Ctrl+U` | Page up |
+| `PgDn` | Page down |
+| `Home`/`g` | Jump to top |
+| `End`/`G` | Jump to bottom |
 | `←`/`→` | Horizontal scroll (table columns) |
+| `Ctrl+←`/`Ctrl+→` | Previous/next category |
 | `Tab`/`Shift+Tab` | Next/previous resource view |
 | `1`–`9` | Select resource by number in current category |
 | `Enter` | Select / expand (xray) |
@@ -100,10 +105,15 @@ go build ./cmd/kview && ./kview
 | `r` | Restart deployment |
 | `x` | Decode secret |
 | `X` | Xray view (resource relationships) |
+| `D` | Diagnostics view |
+| `t` | Event timeline |
 | `F` | Port forward |
+| `v` | Helm values (Helm views) |
+| `m` | Helm manifest (Helm views) |
 | `c` | Copy resource name / content |
 | `Ctrl+D` | Delete resource (with confirmation) |
 | `Ctrl+R` | Refresh current view |
+| `Ctrl+A` | Toggle auto-refresh |
 
 ### Search & Filter
 
@@ -114,6 +124,7 @@ go build ./cmd/kview && ./kview
 | `/-f term` | Fuzzy filter |
 | `/-l key=val` | Label selector filter |
 | `n`/`N` | Next/previous search match (detail views) |
+| `Ctrl+Z` | Toggle error-only filter (show only unhealthy rows) |
 
 ### Sorting
 
@@ -126,10 +137,32 @@ go build ./cmd/kview && ./kview
 
 | Key | Action |
 |-----|--------|
+| `:` | Command mode |
 | `Ctrl+P` | Command palette |
 | `Ctrl+K` | Switch context |
 | `?` | Show help |
-| `q` | Quit |
+| `q` / `Ctrl+C` | Quit |
+
+### Log Viewer
+
+| Key | Action |
+|-----|--------|
+| `/` | Search logs (regex) |
+| `n`/`N` | Next/previous match |
+| `Ctrl+S` | Export/save logs |
+| `t` | Toggle timestamps |
+| `p` | Previous container logs |
+| `Ctrl+T` | Time range filter |
+| `w` | Toggle line wrap |
+| `f` | Toggle auto-scroll (tail) |
+
+### Mouse
+
+kview does not capture mouse input, matching k9s behavior:
+
+- **Text highlighting** — Click and drag to select text natively (no Shift required)
+- **Mouse wheel** — Scrolls via the terminal's alternate screen scroll conversion (terminal-dependent)
+- **Copy/paste** — Use your terminal's native selection and clipboard
 
 ## Resource Categories
 
@@ -145,45 +178,224 @@ go build ./cmd/kview && ./kview
 
 Open the command line with `:` (Shift+colon):
 
-```
-:pods, :deploy, :svc, :cm        Switch to resource view
-:sec, :ing, :pvc, :sts           More resource views
-:nodes, :events, :rs, :ds        Cluster resource views
-:jobs, :cj, :helm                Batch and Helm views
-:ns <namespace>                  Switch namespace
-:ctx <context>                   Switch context
-:describe, :yaml, :logs          View actions on selected resource
-:shell, :sh, :exec               Shell into pod container
-:edit                            Edit resource in $EDITOR
-:delete                          Delete selected resource
-:scale <name> <replicas>         Scale a deployment
-:xray <kind>                     Xray tree for resource type
-:xray <name>                     Xray relationships for specific resource
-:graph                           Alias for :xray
-:pf                              Show port forwards view
-:pf-stop <id|all>                Stop port forward session(s)
-:timeline                        Event timeline
-:diagnosis                       Diagnostics view
-:health                          Health dashboard
-:pulse                           Pulse dashboard
-:api-resources                   Browse API resources (CRDs)
-:themes                          Display available themes
-:refresh                         Refresh current view
-:help                            Show help
-:q                               Quit
-```
+### Resource Views
+
+| Command | Aliases | Action |
+|---------|---------|--------|
+| `:pods` | `:pod`, `:po` | Switch to Pods view |
+| `:deployments` | `:deployment`, `:deploy` | Switch to Deployments view |
+| `:services` | `:service`, `:svc` | Switch to Services view |
+| `:configmaps` | `:configmap`, `:cm` | Switch to ConfigMaps view |
+| `:secrets` | `:secret`, `:sec` | Switch to Secrets view |
+| `:ingresses` | `:ingress`, `:ing` | Switch to Ingresses view |
+| `:pvcs` | `:pvc`, `:persistentvolumeclaim` | Switch to PVCs view |
+| `:statefulsets` | `:statefulset`, `:sts` | Switch to StatefulSets view |
+| `:nodes` | `:node`, `:no` | Switch to Nodes view |
+| `:events` | `:event`, `:ev` | Switch to Events view |
+| `:replicasets` | `:replicaset`, `:rs` | Switch to ReplicaSets view |
+| `:daemonsets` | `:daemonset`, `:ds` | Switch to DaemonSets view |
+| `:jobs` | `:job` | Switch to Jobs view |
+| `:cronjobs` | `:cronjob`, `:cj` | Switch to CronJobs view |
+| `:hpa` | `:hpas` | Switch to HPAs view |
+| `:pv` | `:pvs`, `:persistentvolume` | Switch to PVs view |
+| `:rolebindings` | `:rolebinding`, `:rb` | Switch to RoleBindings view |
+| `:helm` | `:releases`, `:rel`, `:hr` | Switch to Helm Releases view |
+
+### Navigation & Actions
+
+| Command | Action |
+|---------|--------|
+| `:ns <namespace>` | Switch namespace (`:ns all` or `:ns -` for all) |
+| `:ns` | Open namespace picker |
+| `:ctx <context>` | Switch context |
+| `:describe` / `:desc` | Describe selected resource |
+| `:yaml` | Show YAML view |
+| `:logs` / `:log` | View pod logs |
+| `:shell` / `:sh` / `:exec` | Shell into container (optional: `:shell <container>`) |
+| `:edit` | Edit resource in `$EDITOR` |
+| `:delete` / `:del` | Delete selected resource |
+| `:scale <name> <replicas>` | Scale a deployment |
+| `:refresh` / `:r` | Refresh current view |
+
+### Advanced Views
+
+| Command | Action |
+|---------|--------|
+| `:xray <kind>` | Xray tree for resource type (e.g. `:xray deploy`) |
+| `:xray <name>` | Xray for specific resource (e.g. `:xray nginx`) |
+| `:xray <kind>/<name>` | Xray with kind (e.g. `:xray svc/nginx`) |
+| `:xray <ns>/<kind>/<name>` | Xray with namespace (e.g. `:xray default/deploy/nginx`) |
+| `:graph` | Alias for `:xray` |
+| `:timeline` / `:tl` | Event timeline view |
+| `:diagnosis` / `:diag` | Diagnostics view |
+| `:health` | Cluster health dashboard |
+| `:pulse` | Pulse dashboard |
+| `:pf` / `:portforwards` | Port forwards management view |
+| `:pf-stop <id\|all>` | Stop port forward session(s) |
+| `:api-resources` / `:ar` | Browse API resources (CRDs) |
+| `:themes` | Display all available themes with color swatches (read-only — set theme in config file) |
+| `:help` / `:h` | Show help |
+| `:q` / `:quit` | Quit |
+
+### CRD / Generic Resources
+
+Any unknown command is looked up against the cluster's discovered API resources. This means custom resources (CRDs) and built-in types not in the resource views table above are all accessible. For example:
+
+- `:networkpolicies` — NetworkPolicy resources
+- `:storageclasses` — StorageClass resources
+- `:serviceaccounts` — ServiceAccount resources
+- `:certificates` — cert-manager Certificate CRDs
+- Any CRD singular/plural name available on the cluster
+
+The generic view provides the same table interface with describe (`d`), YAML (`y`), edit (`e`), xray (`X`), delete (`Ctrl+D`), filter (`/`), sort (`S`/`[`/`]`), and error filter (`Ctrl+Z`). You can also browse all available API resources with `:api-resources`.
 
 ## View-Specific Shortcuts
 
 | View | Actions |
 |------|---------|
-| Pods | `d` describe, `y` yaml, `l` logs, `s` shell, `F` port-forward, `Ctrl+D` delete |
-| Deployments | `d` describe, `y` yaml, `r` restart, `s` scale, `Ctrl+D` delete |
-| Services | `d` describe, `y` yaml, `F` port-forward, `Ctrl+D` delete |
-| Secrets | `d` describe, `y` yaml, `x` decode, `Ctrl+D` delete |
+| Pods | `d` describe, `y` yaml, `e` edit, `l` logs, `s` shell, `F` port-forward, `c` copy, `Ctrl+D` delete |
+| Deployments | `d` describe, `y` yaml, `e` edit, `r` restart, `s` scale, `c` copy, `Ctrl+D` delete |
+| Services | `d` describe, `y` yaml, `e` edit, `F` port-forward, `c` copy, `Ctrl+D` delete |
+| ConfigMaps | `d` describe, `y` yaml, `e` edit, `c` copy, `Ctrl+D` delete |
+| Secrets | `d` describe, `y` yaml, `e` edit, `x` decode, `c` copy, `Ctrl+D` delete |
 | Helm Releases | `Enter` history, `d` describe, `v` values, `m` manifest, `y` yaml, `Ctrl+D` delete |
+| Helm History | `Enter` detail, `d` describe, `v` values, `m` manifest, `y` yaml |
+| Containers | `d` describe, `l` logs, `s` shell |
 | Xray | `Enter` expand/collapse, `d` describe, `y` yaml, `l` logs, `Ctrl+D` delete |
-| Detail Views | `/` search, `n`/`N` next/prev match, `Escape` clear |
+| Port Forwards | `Ctrl+D` stop |
+| Detail Views | `/` search, `n`/`N` next/prev match, `Escape` clear search |
+| All Table Views | `/` filter, `S`/`[`/`]` sort, `Ctrl+Z` error filter, `e` edit |
+
+## Configuration
+
+Configuration is stored in `~/.kview/config.yaml`:
+
+```yaml
+# UI settings
+ui:
+  # Theme name — see "Themes" section for all 21 options
+  theme: default
+
+  # Show all namespaces on startup
+  showAllNamespaces: true
+
+  # Optional color overrides — see "Custom Colors" section
+  colors: {}
+
+  # Table display options
+  table:
+    showLineNumbers: false
+    compactMode: false
+
+# Default namespace (empty = all namespaces)
+defaultNamespace: ""
+
+# Auto-refresh interval in seconds
+refreshInterval: 30
+
+# SQLite database path for event history and snapshots
+databasePath: ~/.kview/data.db
+```
+
+## Themes
+
+kview ships with 21 built-in themes. Set the theme in your config file or view them at runtime with `:themes`.
+
+### Available Themes
+
+| Theme | Description |
+|-------|-------------|
+| `default` | Dark indigo with purple/cyan accents |
+| `dracula` | Popular dark theme with pastel colors |
+| `catppuccin` | Soothing pastel tones |
+| `tokyo-night` | Modern dark theme inspired by Tokyo lights |
+| `nord` | Arctic blue tones |
+| `gruvbox` | Retro groove warm colors |
+| `solarized` | Precision colors (dark variant) |
+| `one-dark` | Atom One Dark inspired |
+| `monokai` | Classic syntax highlighting colors |
+| `rose-pine` | Rose and pine color harmony |
+| `kanagawa` | Japanese wave inspired |
+| `everforest` | Green forest tones |
+| `palenight` | Pale night dark variant |
+| `ayu` | Ayu mirage theme |
+| `horizon` | Horizon dark |
+| `midnight` | Pure black background |
+| `night-owl` | Optimized for contrast |
+| `synthwave` | Retro neon |
+| `oxocarbon` | IBM Carbon design |
+| `github-dark` | GitHub dark mode |
+| `github-light` | GitHub light mode |
+
+### Custom Colors
+
+Override individual colors in your config. All fields are optional — unset fields use the theme's defaults:
+
+```yaml
+ui:
+  theme: dracula
+  colors:
+    # 12 base colors
+    primary: "#BD93F9"
+    accent: "#8BE9FD"
+    background: "#282A36"
+    surface: "#21222C"
+    text: "#F8F8F2"
+    muted: "#6272A4"
+    border: "#44475A"
+    highlight: "#BD93F9"
+    success: "#50FA7B"
+    warning: "#F1FA8C"
+    error: "#FF5555"
+    info: "#8BE9FD"
+
+    # Derived colors (normally auto-computed from base colors)
+    selectionBg: "#44475A"
+    selectionFg: "#F8F8F2"
+    frameBorder: "#6272A4"
+    surfaceAlt: "#34353E"
+    searchHighlightBg: "#F1FA8C"
+    searchHighlightFg: "#282A36"
+
+    # Delta row marking colors
+    deltaAdd: "#87CEEB"       # New resources
+    deltaModify: "#B0C4DE"    # Modified resources
+    deltaError: "#E08080"     # Unhealthy resources
+    deltaDelete: "#708090"    # Deleted resources (future use)
+```
+
+### Color Derivation
+
+When derived colors are not explicitly set, they are automatically computed from your base colors:
+
+| Derived Color | Computed From |
+|---------------|---------------|
+| `selectionBg` | `accent` darkened 60% |
+| `selectionFg` | Contrast-based white/black against `selectionBg` |
+| `frameBorder` | `border` lightened 30% |
+| `surfaceAlt` | Blend of `background` + `surface` |
+| `searchHighlightBg` | Same as `warning` |
+| `searchHighlightFg` | Luminance-based white/black |
+| `deltaAdd` | `info` lightened 30% |
+| `deltaModify` | Blend of `highlight` + `muted` |
+| `deltaError` | `error` lightened 20% |
+| `deltaDelete` | Same as `muted` |
+
+This means switching themes gives you harmonious delta marking, search highlights, and selection colors automatically.
+
+## Delta Marking
+
+During rolling updates or deployments, kview color-codes rows to show what changed since the last refresh:
+
+| State | Color | Meaning |
+|-------|-------|---------|
+| Add | Sky blue | Resource appeared since last refresh |
+| Modify | Steel blue | Resource values changed |
+| Error | Coral | Resource is unhealthy (CrashLoopBackOff, Failed, OOMKilled, etc.) |
+
+Press `Ctrl+Z` to toggle **error zoom** — filters the table to show only unhealthy rows. Composes with text/fuzzy/label filters. The header shows `[ERRORS]` when active.
+
+On first load, only error states are highlighted (not everything marked as "new").
 
 ## Architecture
 
@@ -211,20 +423,6 @@ kview/
 │   ├── cache/              # In-memory caching with index support
 │   └── workflow/           # YAML-based workflow/runbook engine
 └── pkg/config/             # Configuration types and loading
-```
-
-## Configuration
-
-Configuration is stored in `~/.kview/config.yaml`:
-
-```yaml
-ui:
-  theme: default
-  showAllNamespaces: true
-
-defaultNamespace: ""
-refreshInterval: 30
-databasePath: ~/.kview/data.db
 ```
 
 ## Key Dependencies
