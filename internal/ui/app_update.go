@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -907,15 +906,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if tbl := a.activeTable(); tbl != nil {
 			tbl.InvalidateCache()
 		}
-		// Re-enable mouse cell motion directly via escape sequences. Bubble Tea's
-		// RestoreTerminal() does not restore mouse state (only alt-screen,
-		// bracketed paste, and focus reporting are tracked). Writing directly to
-		// os.Stdout avoids the extra message cycle that tea.EnableMouseCellMotion
-		// would introduce (command → goroutine → enableMouseCellMotionMsg → event
-		// loop → model.Update + View), which delays processing of the user's
-		// first keypress. The renderer has no mouse state tracking, so direct
-		// writes are safe.
-		os.Stdout.WriteString("\033[?1002h\033[?1006h")
 		if msg.Err != nil && !errors.Is(msg.Err, io.EOF) && !errors.Is(msg.Err, context.Canceled) {
 			a.setStatus("Shell error: "+msg.Err.Error(), true)
 			cmds = append(cmds, a.toasts.PushError("Shell Failed", msg.Err.Error()))
@@ -932,7 +922,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if tbl := a.activeTable(); tbl != nil {
 			tbl.InvalidateCache()
 		}
-		os.Stdout.WriteString("\033[?1002h\033[?1006h")
 		if msg.Err != nil {
 			a.setStatus("Edit error: "+msg.Err.Error(), true)
 			cmds = append(cmds, a.toasts.PushError("Edit Failed", msg.Err.Error()))
