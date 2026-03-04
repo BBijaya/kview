@@ -142,12 +142,6 @@ func (a *App) View() string {
 		content = a.namespacePicker.View()
 	}
 
-	// Overlay context picker if visible
-	if a.contextPicker.IsVisible() {
-		a.contextPicker.SetSize(a.width, a.height)
-		content = a.contextPicker.View()
-	}
-
 	// Overlay API resource picker if visible
 	if a.apiResourcePicker.IsVisible() {
 		a.apiResourcePicker.SetSize(a.width, a.height)

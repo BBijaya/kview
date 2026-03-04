@@ -61,7 +61,7 @@ func NewCommandInput() *CommandInput {
 			// Navigation & utility
 			"help", "namespace", "quit", "refresh",
 			// Short aliases
-			"ar", "cj", "cm", "ctx", "deploy", "diag",
+			"ar", "cj", "cm", "context", "ctx", "deploy", "diag",
 			"ds", "ev", "graph", "h", "hr", "ing",
 			"no", "ns", "pf", "pf-stop", "pv", "pvc", "q",
 			"r", "rb", "rel", "releases", "rs", "sec",

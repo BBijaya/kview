@@ -82,6 +82,7 @@ type App struct {
 	helmManifestView   *views.HelmContentView
 	secretDecodeView   *views.SecretDecodeView
 	helpView           *views.HelpView
+	ctxSelectView      *views.ContextSelectView
 
 	// Persistence
 	store           store.Store
@@ -101,7 +102,6 @@ type App struct {
 
 	// New components (Phase 1)
 	namespacePicker *components.Picker
-	contextPicker   *components.Picker
 	detailsPanel    *components.DetailsPanel
 	toasts          *components.ToastStack
 
@@ -208,7 +208,6 @@ func NewApp(client k8s.Client) *App {
 		commandInput:    components.NewCommandInput(),
 		searchInput:     components.NewSearchInput(),
 		namespacePicker: components.NewPicker("namespace", "Select Namespace"),
-		contextPicker:   components.NewPicker("context", "Select Context"),
 		detailsPanel:    components.NewDetailsPanel(client),
 		toasts:          components.NewToastStack(),
 		refreshInterval: 5 * time.Second,
@@ -233,6 +232,7 @@ func NewApp(client k8s.Client) *App {
 	app.logsView = views.NewLogsView(client)
 	app.yamlView = views.NewYAMLView(client)
 	app.nsSelectView = views.NewNamespaceSelectView(client)
+	app.ctxSelectView = views.NewContextSelectView()
 	app.containersView = views.NewContainersView(client)
 
 	// Initialize views
@@ -240,6 +240,7 @@ func NewApp(client k8s.Client) *App {
 	app.views[ViewLogs] = app.logsView
 	app.views[ViewYAML] = app.yamlView
 	app.views[ViewNamespaceSelect] = app.nsSelectView
+	app.views[ViewContextSelect] = app.ctxSelectView
 	app.views[ViewContainers] = app.containersView
 	podsView := views.NewPodsView(client)
 	podsView.SetPortForwardManager(app.pfManager)

@@ -45,6 +45,7 @@ const (
 	ViewSecretDecode
 	ViewHelp
 	ViewPortForwards
+	ViewContextSelect
 )
 
 // SwitchViewMsg requests switching to a different view

@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"github.com/bijaya/kview/internal/k8s"
 	"github.com/bijaya/kview/internal/ui/theme"
 )
 
@@ -11,12 +10,6 @@ import (
 type NamespacesLoadedMsg struct {
 	Namespaces []string
 	Err        error
-}
-
-// ContextsLoadedMsg is sent when contexts are loaded
-type ContextsLoadedMsg struct {
-	Contexts []k8s.ContextInfo
-	Err      error
 }
 
 // RefreshMsg triggers a refresh of the current view
@@ -74,6 +67,7 @@ const (
 	ViewSecretDecode     = theme.ViewSecretDecode
 	ViewHelp             = theme.ViewHelp
 	ViewPortForwards     = theme.ViewPortForwards
+	ViewContextSelect    = theme.ViewContextSelect
 )
 
 
@@ -190,6 +184,8 @@ func ViewName(v ViewType) string {
 		return "Help"
 	case ViewPortForwards:
 		return "Port Forwards"
+	case ViewContextSelect:
+		return "Contexts"
 	default:
 		return "Unknown"
 	}

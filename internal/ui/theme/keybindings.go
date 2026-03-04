@@ -239,8 +239,8 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("", "namespace"),
 		),
 		Context: key.NewBinding(
-			key.WithKeys("ctrl+k"),
-			key.WithHelp("ctrl+k", "context"),
+			key.WithKeys(),
+			key.WithHelp("", "context"),
 		),
 		Palette: key.NewBinding(
 			key.WithKeys("ctrl+p"),

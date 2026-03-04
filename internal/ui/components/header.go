@@ -400,7 +400,7 @@ func (h *Header) getShortcutRows() []string {
 
 	return []string{
 		fmtKey("↑↓", "nav") + sep + fmtKey("enter", "select"),
-		fmtKey("n", "ns") + sep + fmtKey("ctrl+k", "ctx"),
+		fmtKey("n", "ns") + sep + fmtKey(":ctx", "context"),
 		fmtKey("ctrl+p", "palette") + sep + fmtKey("ctrl+r", "refresh"),
 		fmtKey("c", "copy") + sep + fmtKey("q", "quit"),
 		fmtKey("esc", "back") + sep + fmtKey("?", "help"),
