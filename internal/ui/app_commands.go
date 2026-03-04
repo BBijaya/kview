@@ -108,8 +108,7 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 		if len(args) > 0 {
 			return a.switchContext(args[0])
 		}
-		a.setStatus("Usage: :ctx <context>", false)
-		return nil
+		return a.switchView(ViewContextSelect)
 
 	case "refresh", "r":
 		if a.isInformerView(a.activeView) {
@@ -413,7 +412,7 @@ func (a *App) executeCommand(commandID string) tea.Cmd {
 	case "switch.namespace":
 		return a.loadNamespaces()
 	case "switch.context":
-		return a.loadContexts()
+		return a.switchView(ViewContextSelect)
 	}
 	return nil
 }

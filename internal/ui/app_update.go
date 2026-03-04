@@ -46,13 +46,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, cmd
 		}
 
-		// Handle context picker
-		if a.contextPicker.IsVisible() {
-			var cmd tea.Cmd
-			a.contextPicker, cmd = a.contextPicker.Update(msg)
-			return a, cmd
-		}
-
 		// Handle API resource picker
 		if a.apiResourcePicker.IsVisible() {
 			var cmd tea.Cmd
@@ -174,10 +167,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.tabs.SetActive(newIdx)
 			a.tabBar.SetActive(newIdx)
 			return a, a.switchView(ViewType(newIdx))
-
-		case key.Matches(msg, DefaultKeyMap().Context):
-			// Open context picker
-			return a, a.loadContexts()
 
 		case key.Matches(msg, DefaultKeyMap().DetailsPanel):
 			a.showDetailsPanel = !a.showDetailsPanel
@@ -735,8 +724,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.loading = true
 			a.setInformersNamespace(msg.Item.ID)
 			cmds = append(cmds, a.dataPollImmediateCmd())
-		case "context":
-			return a, a.switchContext(msg.Item.ID)
 		case "api-resource":
 			if reg := a.client.APIResources(); reg != nil {
 				if info, found := reg.Lookup(msg.Item.ID); found {
@@ -761,26 +748,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				items = append(items, components.PickerItem{ID: ns, Label: ns})
 			}
 			a.namespacePicker.SetItems(items)
-		}
-		return a, nil
-
-	case ContextsLoadedMsg:
-		if msg.Err != nil {
-			a.setStatus("Failed to load contexts: "+msg.Err.Error(), true)
-		} else {
-			var items []components.PickerItem
-			for _, ctx := range msg.Contexts {
-				desc := ""
-				if ctx.Current {
-					desc = "(current)"
-				}
-				items = append(items, components.PickerItem{
-					ID:    ctx.Name,
-					Label: ctx.Name,
-					Desc:  desc,
-				})
-			}
-			a.contextPicker.SetItems(items)
 		}
 		return a, nil
 
@@ -968,6 +935,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.setInformersNamespace(ns)
 		nsCmds = append(nsCmds, a.dataPollImmediateCmd())
 		return a, tea.Batch(nsCmds...)
+
+	case views.ContextSelectedMsg:
+		a.activeView = a.previousView
+		return a, a.switchContext(msg.Context)
 
 	case components.ToastExpiredMsg:
 		a.toasts, _ = a.toasts.Update(msg)

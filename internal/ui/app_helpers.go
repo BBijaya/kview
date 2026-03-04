@@ -297,18 +297,6 @@ func (a *App) loadNamespaces() tea.Cmd {
 	return a.switchView(ViewNamespaceSelect)
 }
 
-// loadContexts loads contexts for the picker
-func (a *App) loadContexts() tea.Cmd {
-	cmd := a.contextPicker.ShowLoading()
-	return tea.Batch(cmd, func() tea.Msg {
-		contexts, err := k8s.GetContexts()
-		if err != nil {
-			return ContextsLoadedMsg{Err: err}
-		}
-		return ContextsLoadedMsg{Contexts: contexts}
-	})
-}
-
 // switchContext switches to a new Kubernetes context
 func (a *App) switchContext(contextName string) tea.Cmd {
 	return func() tea.Msg {
