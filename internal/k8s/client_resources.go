@@ -140,7 +140,7 @@ func (c *K8sClient) GetSecretDecoded(ctx context.Context, namespace, name string
 	}
 
 	for key, val := range secret.Data {
-		b.WriteString(fmt.Sprintf("── %s ──\n", key))
+		b.WriteString(fmt.Sprintf("--- %s ---\n", key))
 		b.WriteString(string(val))
 		if len(val) > 0 && val[len(val)-1] != '\n' {
 			b.WriteString("\n")
