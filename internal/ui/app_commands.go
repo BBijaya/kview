@@ -39,6 +39,9 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 	case "endpoints", "endpoint", "ep":
 		return a.switchView(ViewEndpoints)
 
+	case "endpointslices", "endpointslice", "es":
+		return a.switchView(ViewEndpointSlices)
+
 	case "configmaps", "configmap", "cm":
 		return a.switchView(ViewConfigMaps)
 

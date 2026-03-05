@@ -9,6 +9,7 @@ import (
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -606,6 +607,67 @@ func (c *K8sClient) endpointToEndpointInfo(ep *corev1.Endpoints) EndpointInfo {
 			parts = append(parts, a.ip+":"+strings.Join(a.ports, ","))
 		}
 		info.Endpoints = strings.Join(parts, ", ")
+	}
+
+	return info
+}
+
+func (c *K8sClient) endpointSliceToEndpointSliceInfo(es *discoveryv1.EndpointSlice) EndpointSliceInfo {
+	info := EndpointSliceInfo{
+		Resource: Resource{
+			UID:         string(es.UID),
+			APIVersion:  "discovery.k8s.io/v1",
+			Kind:        "EndpointSlice",
+			Namespace:   es.Namespace,
+			Name:        es.Name,
+			ClusterID:   c.clusterID,
+			Labels:      es.Labels,
+			Annotations: es.Annotations,
+			FetchedAt:   time.Now(),
+		},
+		AddressType: string(es.AddressType),
+	}
+
+	if !es.CreationTimestamp.Time.IsZero() {
+		info.Age = time.Since(es.CreationTimestamp.Time)
+	}
+
+	// Format ports: "port,port,..."
+	var portParts []string
+	for _, p := range es.Ports {
+		if p.Port != nil {
+			portParts = append(portParts, fmt.Sprintf("%d", *p.Port))
+		}
+	}
+	if len(portParts) > 0 {
+		info.Ports = strings.Join(portParts, ",")
+	} else {
+		info.Ports = "<none>"
+	}
+
+	// Format endpoints: "ip(✓), ip(!), ..."
+	const maxEndpoints = 5
+	var epParts []string
+	for i, ep := range es.Endpoints {
+		if i >= maxEndpoints {
+			epParts = append(epParts, fmt.Sprintf("...+%d more", len(es.Endpoints)-maxEndpoints))
+			break
+		}
+		if len(ep.Addresses) == 0 {
+			continue
+		}
+		addr := ep.Addresses[0]
+		ready := ep.Conditions.Ready == nil || *ep.Conditions.Ready
+		if ready {
+			epParts = append(epParts, addr+"(✓)")
+		} else {
+			epParts = append(epParts, addr+"(!)")
+		}
+	}
+	if len(epParts) == 0 {
+		info.Endpoints = "<none>"
+	} else {
+		info.Endpoints = strings.Join(epParts, ", ")
 	}
 
 	return info

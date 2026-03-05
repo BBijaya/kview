@@ -33,6 +33,7 @@ type Client interface {
 	ListDeployments(ctx context.Context, namespace string) ([]DeploymentInfo, error)
 	ListServices(ctx context.Context, namespace string) ([]ServiceInfo, error)
 	ListEndpoints(ctx context.Context, namespace string) ([]EndpointInfo, error)
+	ListEndpointSlices(ctx context.Context, namespace string) ([]EndpointSliceInfo, error)
 
 	// Additional resources
 	ListConfigMaps(ctx context.Context, namespace string) ([]ConfigMapInfo, error)

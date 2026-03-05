@@ -68,6 +68,9 @@ func (c *K8sClient) getGVR(kind string) (schema.GroupVersionResource, error) {
 		"rolebindings":             {Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"},
 		"rolebinding":              {Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"},
 		"rb":                       {Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"},
+		"endpointslices":           {Group: "discovery.k8s.io", Version: "v1", Resource: "endpointslices"},
+		"endpointslice":            {Group: "discovery.k8s.io", Version: "v1", Resource: "endpointslices"},
+		"es":                       {Group: "discovery.k8s.io", Version: "v1", Resource: "endpointslices"},
 	}
 
 	gvr, ok := kindToGVR[strings.ToLower(kind)]
@@ -200,6 +203,10 @@ func (c *DisconnectedClient) ListServices(ctx context.Context, namespace string)
 }
 
 func (c *DisconnectedClient) ListEndpoints(ctx context.Context, namespace string) ([]EndpointInfo, error) {
+	return nil, fmt.Errorf(c.errorMessage)
+}
+
+func (c *DisconnectedClient) ListEndpointSlices(ctx context.Context, namespace string) ([]EndpointSliceInfo, error) {
 	return nil, fmt.Errorf(c.errorMessage)
 }
 

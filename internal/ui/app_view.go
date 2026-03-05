@@ -199,6 +199,8 @@ func (a *App) getViewTypeString() string {
 		return "services"
 	case ViewEndpoints:
 		return "endpoints"
+	case ViewEndpointSlices:
+		return "endpointslices"
 	case ViewConfigMaps:
 		return "configmaps"
 	case ViewSecrets:
@@ -270,6 +272,8 @@ func (a *App) getViewKind() string {
 		return "Service"
 	case ViewEndpoints:
 		return "Endpoints"
+	case ViewEndpointSlices:
+		return "EndpointSlice"
 	case ViewConfigMaps:
 		return "ConfigMap"
 	case ViewSecrets:

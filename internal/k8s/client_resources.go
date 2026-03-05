@@ -11,6 +11,7 @@ import (
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,6 +97,27 @@ func (c *K8sClient) ListEndpoints(ctx context.Context, namespace string) ([]Endp
 	var result []EndpointInfo
 	for _, ep := range endpoints.Items {
 		result = append(result, c.endpointToEndpointInfo(&ep))
+	}
+	return result, nil
+}
+
+// ListEndpointSlices returns detailed endpoint slice information
+func (c *K8sClient) ListEndpointSlices(ctx context.Context, namespace string) ([]EndpointSliceInfo, error) {
+	var list *discoveryv1.EndpointSliceList
+	var err error
+
+	if namespace == "" {
+		list, err = c.clientset.DiscoveryV1().EndpointSlices("").List(ctx, metav1.ListOptions{})
+	} else {
+		list, err = c.clientset.DiscoveryV1().EndpointSlices(namespace).List(ctx, metav1.ListOptions{})
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var result []EndpointSliceInfo
+	for _, es := range list.Items {
+		result = append(result, c.endpointSliceToEndpointSliceInfo(&es))
 	}
 	return result, nil
 }
