@@ -26,6 +26,7 @@ type CategoryTabs struct {
 	activeCategoryIdx int
 	activeResourceIdx int // Index within the current category
 	globalActiveIdx   int // Global index across all resources
+	highlightActive   bool // true when activeView is a category resource
 }
 
 // Categories defines the resource groupings
@@ -73,10 +74,17 @@ func (c *CategoryTabs) SetActiveByGlobalIndex(globalIdx int) {
 			if int(vt) == globalIdx {
 				c.activeCategoryIdx = catIdx
 				c.activeResourceIdx = resIdx
+				c.highlightActive = true
 				return
 			}
 		}
 	}
+	c.highlightActive = false
+}
+
+// IsHighlightActive returns whether the current view is a category resource
+func (c *CategoryTabs) IsHighlightActive() bool {
+	return c.highlightActive
 }
 
 // GlobalActiveIndex returns the current global active index

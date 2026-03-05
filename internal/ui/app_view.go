@@ -80,6 +80,7 @@ func (a *App) View() string {
 	a.header.SetResourceTabs(resourceTabs)
 	a.header.SetActiveCategory(a.categoryTabs.ActiveCategory())
 	a.header.SetActiveResourceIdx(a.categoryTabs.ActiveResourceIndex())
+	a.header.SetHighlightTabs(a.categoryTabs.IsHighlightActive())
 
 	// Use cached header if dirty flag hasn't changed
 	headerBox := a.cachedHeader
