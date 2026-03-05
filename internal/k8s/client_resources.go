@@ -79,6 +79,27 @@ func (c *K8sClient) ListServices(ctx context.Context, namespace string) ([]Servi
 	return result, nil
 }
 
+// ListEndpoints returns detailed endpoint information
+func (c *K8sClient) ListEndpoints(ctx context.Context, namespace string) ([]EndpointInfo, error) {
+	var endpoints *corev1.EndpointsList
+	var err error
+
+	if namespace == "" {
+		endpoints, err = c.clientset.CoreV1().Endpoints("").List(ctx, metav1.ListOptions{})
+	} else {
+		endpoints, err = c.clientset.CoreV1().Endpoints(namespace).List(ctx, metav1.ListOptions{})
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var result []EndpointInfo
+	for _, ep := range endpoints.Items {
+		result = append(result, c.endpointToEndpointInfo(&ep))
+	}
+	return result, nil
+}
+
 // ListConfigMaps returns detailed configmap information
 func (c *K8sClient) ListConfigMaps(ctx context.Context, namespace string) ([]ConfigMapInfo, error) {
 	var configmaps *corev1.ConfigMapList
