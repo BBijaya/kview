@@ -12,6 +12,7 @@ const (
 	ViewPods ViewType = iota
 	ViewDeployments
 	ViewServices
+	ViewEndpoints
 	ViewConfigMaps
 	ViewSecrets
 	ViewIngresses

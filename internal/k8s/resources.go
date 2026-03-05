@@ -144,6 +144,13 @@ type ServicePort struct {
 	NodePort   int32
 }
 
+// EndpointInfo contains endpoint-specific information
+type EndpointInfo struct {
+	Resource
+	Endpoints string        // Pre-formatted ip:port string for display
+	Age       time.Duration
+}
+
 // LogOptions contains options for log retrieval
 type LogOptions struct {
 	Container    string

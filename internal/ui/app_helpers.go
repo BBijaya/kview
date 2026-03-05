@@ -388,6 +388,9 @@ func (a *App) initInformers() {
 		ViewServices: k8s.NewResourceInformer(a.client, "services", func(ctx context.Context, c k8s.Client, ns string) (any, error) {
 			return c.ListServices(ctx, ns)
 		}),
+		ViewEndpoints: k8s.NewResourceInformer(a.client, "endpoints", func(ctx context.Context, c k8s.Client, ns string) (any, error) {
+			return c.ListEndpoints(ctx, ns)
+		}),
 		ViewConfigMaps: k8s.NewResourceInformer(a.client, "configmaps", func(ctx context.Context, c k8s.Client, ns string) (any, error) {
 			return c.ListConfigMaps(ctx, ns)
 		}),
@@ -554,6 +557,9 @@ func (a *App) dispatchInformerData(vt ViewType) tea.Cmd {
 	case ViewServices:
 		svcs, _ := data.([]k8s.ServiceInfo)
 		return func() tea.Msg { return views.ServicesLoadedMsg{Services: svcs, Err: err} }
+	case ViewEndpoints:
+		eps, _ := data.([]k8s.EndpointInfo)
+		return func() tea.Msg { return views.EndpointsLoadedMsg{Endpoints: eps, Err: err} }
 	case ViewConfigMaps:
 		cms, _ := data.([]k8s.ConfigMapInfo)
 		return func() tea.Msg { return views.ConfigMapsLoadedMsg{ConfigMaps: cms, Err: err} }

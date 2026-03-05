@@ -32,6 +32,7 @@ type Client interface {
 	ListPods(ctx context.Context, namespace string) ([]PodInfo, error)
 	ListDeployments(ctx context.Context, namespace string) ([]DeploymentInfo, error)
 	ListServices(ctx context.Context, namespace string) ([]ServiceInfo, error)
+	ListEndpoints(ctx context.Context, namespace string) ([]EndpointInfo, error)
 
 	// Additional resources
 	ListConfigMaps(ctx context.Context, namespace string) ([]ConfigMapInfo, error)

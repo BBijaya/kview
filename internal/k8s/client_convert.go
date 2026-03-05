@@ -549,6 +549,68 @@ func (c *K8sClient) serviceToServiceInfo(svc *corev1.Service) ServiceInfo {
 	return info
 }
 
+func (c *K8sClient) endpointToEndpointInfo(ep *corev1.Endpoints) EndpointInfo {
+	info := EndpointInfo{
+		Resource: Resource{
+			UID:         string(ep.UID),
+			APIVersion:  "v1",
+			Kind:        "Endpoints",
+			Namespace:   ep.Namespace,
+			Name:        ep.Name,
+			ClusterID:   c.clusterID,
+			Labels:      ep.Labels,
+			Annotations: ep.Annotations,
+			FetchedAt:   time.Now(),
+		},
+	}
+
+	if !ep.CreationTimestamp.Time.IsZero() {
+		info.Age = time.Since(ep.CreationTimestamp.Time)
+	}
+
+	// Build ip → []port mapping across all subsets
+	type ipPorts struct {
+		ip    string
+		ports []string
+	}
+	var addresses []ipPorts
+	seen := map[string]int{} // ip → index in addresses
+
+	for _, subset := range ep.Subsets {
+		// Collect port numbers for this subset
+		var portStrs []string
+		for _, p := range subset.Ports {
+			portStrs = append(portStrs, fmt.Sprintf("%d", p.Port))
+		}
+
+		for _, addr := range subset.Addresses {
+			if idx, ok := seen[addr.IP]; ok {
+				addresses[idx].ports = append(addresses[idx].ports, portStrs...)
+			} else {
+				seen[addr.IP] = len(addresses)
+				addresses = append(addresses, ipPorts{ip: addr.IP, ports: append([]string{}, portStrs...)})
+			}
+		}
+	}
+
+	if len(addresses) == 0 {
+		info.Endpoints = "<none>"
+	} else {
+		const maxAddrs = 5
+		var parts []string
+		for i, a := range addresses {
+			if i >= maxAddrs {
+				parts = append(parts, fmt.Sprintf("...+%d more", len(addresses)-maxAddrs))
+				break
+			}
+			parts = append(parts, a.ip+":"+strings.Join(a.ports, ","))
+		}
+		info.Endpoints = strings.Join(parts, ", ")
+	}
+
+	return info
+}
+
 func (c *K8sClient) nodeToNodeInfo(node *corev1.Node) NodeInfo {
 	info := NodeInfo{
 		Resource: Resource{

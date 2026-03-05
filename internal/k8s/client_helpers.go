@@ -20,6 +20,9 @@ func (c *K8sClient) getGVR(kind string) (schema.GroupVersionResource, error) {
 		"services":    {Group: "", Version: "v1", Resource: "services"},
 		"service":     {Group: "", Version: "v1", Resource: "services"},
 		"svc":         {Group: "", Version: "v1", Resource: "services"},
+		"endpoints":   {Group: "", Version: "v1", Resource: "endpoints"},
+		"endpoint":    {Group: "", Version: "v1", Resource: "endpoints"},
+		"ep":          {Group: "", Version: "v1", Resource: "endpoints"},
 		"namespaces":  {Group: "", Version: "v1", Resource: "namespaces"},
 		"namespace":   {Group: "", Version: "v1", Resource: "namespaces"},
 		"ns":          {Group: "", Version: "v1", Resource: "namespaces"},
@@ -193,6 +196,10 @@ func (c *DisconnectedClient) ListDeployments(ctx context.Context, namespace stri
 }
 
 func (c *DisconnectedClient) ListServices(ctx context.Context, namespace string) ([]ServiceInfo, error) {
+	return nil, fmt.Errorf(c.errorMessage)
+}
+
+func (c *DisconnectedClient) ListEndpoints(ctx context.Context, namespace string) ([]EndpointInfo, error) {
 	return nil, fmt.Errorf(c.errorMessage)
 }
 
