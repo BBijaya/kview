@@ -151,6 +151,15 @@ type EndpointInfo struct {
 	Age       time.Duration
 }
 
+// EndpointSliceInfo contains endpoint slice-specific information
+type EndpointSliceInfo struct {
+	Resource
+	AddressType string
+	Ports       string        // Pre-formatted "port/proto,..." string
+	Endpoints   string        // Pre-formatted "ip(✓), ip(!), ..." string
+	Age         time.Duration
+}
+
 // LogOptions contains options for log retrieval
 type LogOptions struct {
 	Container    string

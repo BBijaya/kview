@@ -34,7 +34,8 @@ const (
 	ViewPods         = theme.ViewPods
 	ViewDeployments  = theme.ViewDeployments
 	ViewServices     = theme.ViewServices
-	ViewEndpoints    = theme.ViewEndpoints
+	ViewEndpoints       = theme.ViewEndpoints
+	ViewEndpointSlices  = theme.ViewEndpointSlices
 	ViewConfigMaps   = theme.ViewConfigMaps
 	ViewSecrets      = theme.ViewSecrets
 	ViewIngresses    = theme.ViewIngresses
@@ -121,6 +122,8 @@ func ViewName(v ViewType) string {
 		return "Services"
 	case ViewEndpoints:
 		return "Endpoints"
+	case ViewEndpointSlices:
+		return "EndpointSlices"
 	case ViewConfigMaps:
 		return "ConfigMaps"
 	case ViewSecrets:

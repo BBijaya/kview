@@ -248,6 +248,7 @@ func NewApp(client k8s.Client) *App {
 	app.views[ViewDeployments] = views.NewDeploymentsView(client)
 	app.views[ViewServices] = views.NewServicesView(client)
 	app.views[ViewEndpoints] = views.NewEndpointsView(client)
+	app.views[ViewEndpointSlices] = views.NewEndpointSlicesView(client)
 	app.views[ViewConfigMaps] = views.NewConfigMapsView(client)
 	app.views[ViewSecrets] = views.NewSecretsView(client)
 	app.views[ViewIngresses] = views.NewIngressesView(client)
