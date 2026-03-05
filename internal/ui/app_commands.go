@@ -28,64 +28,64 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 		return tea.Quit
 
 	case "pods", "pod", "po":
-		return a.switchView(ViewPods)
+		return a.switchViewWithNS(ViewPods, args)
 
 	case "deployments", "deployment", "deploy":
-		return a.switchView(ViewDeployments)
+		return a.switchViewWithNS(ViewDeployments, args)
 
 	case "services", "service", "svc":
-		return a.switchView(ViewServices)
+		return a.switchViewWithNS(ViewServices, args)
 
 	case "endpoints", "endpoint", "ep":
-		return a.switchView(ViewEndpoints)
+		return a.switchViewWithNS(ViewEndpoints, args)
 
 	case "endpointslices", "endpointslice", "es":
-		return a.switchView(ViewEndpointSlices)
+		return a.switchViewWithNS(ViewEndpointSlices, args)
 
 	case "configmaps", "configmap", "cm":
-		return a.switchView(ViewConfigMaps)
+		return a.switchViewWithNS(ViewConfigMaps, args)
 
 	case "secrets", "secret", "sec":
-		return a.switchView(ViewSecrets)
+		return a.switchViewWithNS(ViewSecrets, args)
 
 	case "ingresses", "ingress", "ing":
-		return a.switchView(ViewIngresses)
+		return a.switchViewWithNS(ViewIngresses, args)
 
 	case "pvcs", "pvc", "persistentvolumeclaim", "persistentvolumeclaims":
-		return a.switchView(ViewPVCs)
+		return a.switchViewWithNS(ViewPVCs, args)
 
 	case "statefulsets", "statefulset", "sts":
-		return a.switchView(ViewStatefulSets)
+		return a.switchViewWithNS(ViewStatefulSets, args)
 
 	case "nodes", "node", "no":
-		return a.switchView(ViewNodes)
+		return a.switchViewWithNS(ViewNodes, args)
 
 	case "events", "event", "ev":
-		return a.switchView(ViewEvents)
+		return a.switchViewWithNS(ViewEvents, args)
 
 	case "replicasets", "replicaset", "rs":
-		return a.switchView(ViewReplicaSets)
+		return a.switchViewWithNS(ViewReplicaSets, args)
 
 	case "daemonsets", "daemonset", "ds":
-		return a.switchView(ViewDaemonSets)
+		return a.switchViewWithNS(ViewDaemonSets, args)
 
 	case "jobs", "job":
-		return a.switchView(ViewJobs)
+		return a.switchViewWithNS(ViewJobs, args)
 
 	case "cronjobs", "cronjob", "cj":
-		return a.switchView(ViewCronJobs)
+		return a.switchViewWithNS(ViewCronJobs, args)
 
 	case "hpa", "hpas", "horizontalpodautoscaler", "horizontalpodautoscalers":
-		return a.switchView(ViewHPAs)
+		return a.switchViewWithNS(ViewHPAs, args)
 
 	case "pv", "pvs", "persistentvolume", "persistentvolumes":
-		return a.switchView(ViewPVs)
+		return a.switchViewWithNS(ViewPVs, args)
 
 	case "rolebindings", "rolebinding", "rb":
-		return a.switchView(ViewRoleBindings)
+		return a.switchViewWithNS(ViewRoleBindings, args)
 
 	case "helm", "helmreleases", "helmrelease", "releases", "release", "rel", "hr":
-		return a.switchView(ViewHelmReleases)
+		return a.switchViewWithNS(ViewHelmReleases, args)
 
 	case "ns", "namespace":
 		if len(args) > 0 {
@@ -368,6 +368,46 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 		a.setStatus("Unknown command: "+cmd, true)
 		return nil
 	}
+}
+
+// switchViewWithNS switches to a resource view, optionally setting the namespace first.
+// If args contains a namespace, it validates against the cached list and applies it.
+func (a *App) switchViewWithNS(view ViewType, args []string) tea.Cmd {
+	if len(args) == 0 {
+		return a.switchView(view)
+	}
+
+	namespace := args[0]
+
+	// Validate against cached namespaces (if cache is populated)
+	if len(a.cachedNamespaces) > 0 && namespace != "all" && namespace != "-" {
+		found := false
+		for _, ns := range a.cachedNamespaces {
+			if ns == namespace {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return a.toasts.PushError("Namespace", fmt.Sprintf("Unknown namespace: %s", namespace))
+		}
+	}
+
+	// Apply namespace (same pattern as :ns command)
+	if namespace == "all" || namespace == "-" {
+		a.namespace = ""
+		a.propagateNamespace("")
+		a.header.SetNamespace("all")
+	} else {
+		a.namespace = namespace
+		a.propagateNamespace(namespace)
+		a.header.SetNamespace(namespace)
+	}
+	a.invalidateHeader()
+	a.loading = true
+	a.setInformersNamespace(a.namespace)
+
+	return tea.Batch(a.dataPollImmediateCmd(), a.switchView(view))
 }
 
 // executeCommand handles commands from the command palette/registry

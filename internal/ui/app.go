@@ -161,6 +161,9 @@ type App struct {
 	headerDirtyFlag    uint64
 	lastRenderedHeader uint64
 
+	// Cached namespace list (populated from CommandCompletionsMsg)
+	cachedNamespaces []string
+
 }
 
 // NewApp creates a new application instance
