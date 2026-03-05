@@ -46,6 +46,9 @@ type Header struct {
 
 	// Delta filter indicator
 	deltaFilterActive bool
+
+	// Whether to highlight active category/resource tabs
+	highlightTabs bool
 }
 
 // NewHeader creates a new header component
@@ -161,6 +164,11 @@ func (h *Header) SetFilter(active bool, text string) {
 // SetDeltaFilter sets the delta filter indicator
 func (h *Header) SetDeltaFilter(active bool) {
 	h.deltaFilterActive = active
+}
+
+// SetHighlightTabs sets whether to highlight active category/resource tabs
+func (h *Header) SetHighlightTabs(v bool) {
+	h.highlightTabs = v
 }
 
 // SetTabs sets the available tabs
@@ -579,7 +587,7 @@ func (h *Header) renderCategoryWithResources() string {
 	// Render categories
 	for i, cat := range categories {
 		style := theme.Styles.CategoryItem
-		if i == h.activeCategory {
+		if h.highlightTabs && i == h.activeCategory {
 			style = theme.Styles.CategoryItemActive
 		}
 		result.WriteString(style.Render(cat))
@@ -599,7 +607,7 @@ func (h *Header) renderCategoryWithResources() string {
 	for i, tab := range tabs {
 		numStyle := theme.Styles.TabBarNumber
 		style := theme.Styles.ResourceItem
-		if i == h.activeResourceIdx {
+		if h.highlightTabs && i == h.activeResourceIdx {
 			style = theme.Styles.ResourceItemActive
 		}
 
