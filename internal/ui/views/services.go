@@ -29,11 +29,11 @@ func serviceColumns(showNS bool) []components.Column {
 		cols = append(cols, components.Column{Title: "NAMESPACE", Width: 15})
 	}
 	cols = append(cols,
-		components.Column{Title: "NAME", Width: 25, MinWidth: 15, Flexible: true},
+		components.Column{Title: "NAME", Width: 35},
 		components.Column{Title: "TYPE", Width: 12},
 		components.Column{Title: "CLUSTER-IP", Width: 16},
 		components.Column{Title: "EXTERNAL-IP", Width: 16},
-		components.Column{Title: "PORTS", Width: 20},
+		components.Column{Title: "PORTS", Width: 25},
 		components.Column{Title: "AGE", Width: 8, Align: lipgloss.Right},
 	)
 	return cols
