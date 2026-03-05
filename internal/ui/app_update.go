@@ -365,6 +365,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case CommandCompletionsMsg:
+		a.cachedNamespaces = msg.Namespaces
 		a.commandInput.SetNamespaces(msg.Namespaces)
 		a.commandInput.SetContexts(msg.Contexts)
 		a.commandInput.SetPortForwardIDs(msg.PortForwardIDs)

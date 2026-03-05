@@ -183,6 +183,30 @@ var xrayKinds = []string{
 	"cm", "sec", "ing", "pvc", "pv", "hpa", "node",
 }
 
+// resourceCommands are commands that accept an optional namespace argument.
+var resourceCommands = map[string]bool{
+	"pods": true, "pod": true, "po": true,
+	"deployments": true, "deployment": true, "deploy": true,
+	"services": true, "service": true, "svc": true,
+	"endpoints": true, "endpoint": true, "ep": true,
+	"endpointslices": true, "endpointslice": true, "es": true,
+	"configmaps": true, "configmap": true, "cm": true,
+	"secrets": true, "secret": true, "sec": true,
+	"ingresses": true, "ingress": true, "ing": true,
+	"pvcs": true, "pvc": true, "persistentvolumeclaim": true, "persistentvolumeclaims": true,
+	"statefulsets": true, "statefulset": true, "sts": true,
+	"nodes": true, "node": true, "no": true,
+	"events": true, "event": true, "ev": true,
+	"replicasets": true, "replicaset": true, "rs": true,
+	"daemonsets": true, "daemonset": true, "ds": true,
+	"jobs": true, "job": true,
+	"cronjobs": true, "cronjob": true, "cj": true,
+	"hpa": true, "hpas": true, "horizontalpodautoscaler": true, "horizontalpodautoscalers": true,
+	"pv": true, "pvs": true, "persistentvolume": true, "persistentvolumes": true,
+	"rolebindings": true, "rolebinding": true, "rb": true,
+	"helm": true, "helmreleases": true, "helmrelease": true, "releases": true, "release": true, "rel": true, "hr": true,
+}
+
 // updateDynamicSuggestions switches suggestions based on current input prefix.
 func (c *CommandInput) updateDynamicSuggestions() {
 	val := c.input.Value()
@@ -230,6 +254,23 @@ func (c *CommandInput) updateDynamicSuggestions() {
 		}
 		c.input.SetSuggestions(suggestions)
 		return
+	}
+
+	// :<resource> → namespace names (e.g., :pods default, :deploy kube-system)
+	if len(c.namespaces) > 0 {
+		if spaceIdx := strings.IndexByte(val, ' '); spaceIdx > 0 {
+			cmd := val[:spaceIdx]
+			if resourceCommands[cmd] {
+				prefix := cmd + " "
+				suggestions := make([]string, 0, len(c.namespaces)+1)
+				suggestions = append(suggestions, prefix+"all")
+				for _, ns := range c.namespaces {
+					suggestions = append(suggestions, prefix+ns)
+				}
+				c.input.SetSuggestions(suggestions)
+				return
+			}
+		}
 	}
 
 	c.input.SetSuggestions(c.commands)
