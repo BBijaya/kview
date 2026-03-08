@@ -4,10 +4,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -59,7 +59,7 @@ func NewPicker(id, title string) *Picker {
 	ti := textinput.New()
 	ti.Placeholder = "Filter..."
 	ti.CharLimit = 50
-	ti.Width = 40
+	ti.SetWidth(40)
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
@@ -195,7 +195,7 @@ func (p *Picker) Update(msg tea.Msg) (*Picker, tea.Cmd) {
 			var cmd tea.Cmd
 			p.spinner, cmd = p.spinner.Update(msg)
 			return p, cmd
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			if msg.String() == "esc" {
 				p.Hide()
 				return p, func() tea.Msg {
@@ -207,7 +207,7 @@ func (p *Picker) Update(msg tea.Msg) (*Picker, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if p.filtering {
 			switch msg.String() {
 			case "esc":

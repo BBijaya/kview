@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/analyzer"
 	"github.com/bijaya/kview/internal/k8s"
@@ -14,7 +14,7 @@ import (
 
 // updateContent assembles all sections into the viewport
 func (v *HealthView) updateContent() {
-	w := v.viewport.Width
+	w := v.viewport.Width()
 	if w < 40 {
 		w = 40
 	}

@@ -1,11 +1,12 @@
 package views
 
 import (
+	"image/color"
 	"fmt"
 	"math"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -22,7 +23,7 @@ const gaugeHeight = 7
 
 // updateContent assembles the full pulse view content and sets it on the viewport.
 func (v *PulseView) updateContent() {
-	w := v.viewport.Width
+	w := v.viewport.Width()
 	if w < 40 {
 		w = 40
 	}
@@ -194,7 +195,7 @@ func (v *PulseView) renderGauge(g, prev GaugeData, hasPrev, selected bool, boxWi
 }
 
 // renderSparkline renders a sparkline from values 0-100 using block characters.
-func renderSparkline(values []float64, width int, color lipgloss.TerminalColor) string {
+func renderSparkline(values []float64, width int, color color.Color) string {
 	style := lipgloss.NewStyle().
 		Foreground(color).
 		Background(theme.ColorBackground)
@@ -235,7 +236,7 @@ func renderSparkline(values []float64, width int, color lipgloss.TerminalColor) 
 }
 
 // renderSparklineBox renders a bordered sparkline box with title and current percentage.
-func (v *PulseView) renderSparklineBox(title string, values []float64, sparkWidth int, color lipgloss.TerminalColor, currentPct int) string {
+func (v *PulseView) renderSparklineBox(title string, values []float64, sparkWidth int, color color.Color, currentPct int) string {
 	borderStyle := lipgloss.NewStyle().
 		Foreground(theme.ColorBorder).
 		Background(theme.ColorBackground)

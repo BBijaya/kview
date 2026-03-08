@@ -4,9 +4,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/bijaya/kview/internal/k8s"
 	"github.com/bijaya/kview/internal/ui/theme"
@@ -33,7 +33,7 @@ type PulseView struct {
 
 // NewPulseView creates a new pulse dashboard view.
 func NewPulseView(client k8s.Client) *PulseView {
-	vp := viewport.New(80, 20)
+	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	vp.Style = theme.Styles.Base
 
 	return &PulseView{
@@ -110,7 +110,7 @@ func (v *PulseView) Update(msg tea.Msg) (View, tea.Cmd) {
 			cmds = append(cmds, v.Refresh())
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			return v, func() tea.Msg { return GoBackMsg{} }
@@ -224,7 +224,7 @@ func (v *PulseView) View() string {
 }
 
 func (v *PulseView) renderHelpLine() string {
-	w := v.viewport.Width
+	w := v.viewport.Width()
 	line := theme.Styles.Help.Render("←→↑↓ navigate  Enter select  Ctrl+R refresh  Esc back")
 	return theme.PadToWidth(line, w, theme.ColorBackground)
 }
@@ -247,10 +247,10 @@ func (v *PulseView) ShortHelp() []key.Binding {
 
 func (v *PulseView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
-	v.viewport.Width = width
-	v.viewport.Height = height - 1 // reserve 1 line for help footer
-	if v.viewport.Height < 1 {
-		v.viewport.Height = 1
+	v.viewport.SetWidth(width)
+	v.viewport.SetHeight(height - 1) // reserve 1 line for help footer
+	if v.viewport.Height() < 1 {
+		v.viewport.SetHeight(1)
 	}
 	if v.gauges[0].Name != "" {
 		v.updateContent()

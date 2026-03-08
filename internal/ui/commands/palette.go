@@ -3,10 +3,10 @@ package commands
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -103,11 +103,12 @@ func NewPalette(registry *Registry) *Palette {
 	ti := textinput.New()
 	ti.Placeholder = "Type a command..."
 	ti.CharLimit = 100
-	ti.Width = 50
-	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(inputBg)
-	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.ColorText).Background(inputBg)
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(theme.ColorText).Background(inputBg)
-	ti.Cursor.Style = lipgloss.NewStyle().Background(inputBg)
+	ti.SetWidth(50)
+	styles := textinput.DefaultDarkStyles()
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(inputBg)
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(theme.ColorText).Background(inputBg)
+	styles.Focused.Prompt = lipgloss.NewStyle().Foreground(theme.ColorText).Background(inputBg)
+	ti.SetStyles(styles)
 
 	p := &Palette{
 		registry:   registry,
@@ -146,7 +147,7 @@ func (p *Palette) SetSize(width, height int) {
 	p.width = min(width-10, 70)
 	p.height = height
 	p.maxVisible = min(10, height-6)
-	p.input.Width = p.width - 4
+	p.input.SetWidth(p.width - 4)
 }
 
 // Update handles input events
@@ -158,7 +159,7 @@ func (p *Palette) Update(msg tea.Msg) (*Palette, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, p.keys.Escape):
 			p.Hide()

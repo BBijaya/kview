@@ -1,11 +1,12 @@
 package components
 
 import (
+	"image/color"
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -201,7 +202,7 @@ func (t *ToastStack) ViewOverlay(background string) string {
 // renderToast renders a single toast
 func (t *ToastStack) renderToast(toast Toast, width int) string {
 	// Get style based on type
-	var borderColor lipgloss.Color
+	var borderColor color.Color
 	var icon string
 
 	switch toast.Type {

@@ -1,9 +1,10 @@
 package components
 
 import (
+	"image/color"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -38,14 +39,14 @@ func (t *Table) renderRowString(rowIdx int, isSelected bool, ctx *renderContext)
 	// Completed rows: apply the status column's foreground color to ALL cells,
 	// so the entire row is visually uniform (like k9s CompletedColor).
 	isCompletedRow := !isSelected && row.Status == "Completed"
-	var completedFg lipgloss.TerminalColor
+	var completedFg color.Color
 	if isCompletedRow {
 		completedFg = theme.ColorCompletedText
 	}
 
 	// Delta row coloring (whole-row foreground override, higher priority than completed)
 	isDeltaRow := !isSelected && row.DeltaState != DeltaNone
-	var deltaFg lipgloss.TerminalColor
+	var deltaFg color.Color
 	if isDeltaRow {
 		switch row.DeltaState {
 		case DeltaError:
@@ -64,7 +65,7 @@ func (t *Table) renderRowString(rowIdx int, isSelected bool, ctx *renderContext)
 	// Left scroll indicator (replaces 1 char at start of row number area).
 	// Background must match the row state to avoid color leaks.
 	if scrollIndicatorLeft {
-		var indicatorBg lipgloss.TerminalColor = theme.ColorBackground
+		var indicatorBg color.Color = theme.ColorBackground
 		if isSelected {
 			if t.focused {
 				indicatorBg = theme.ColorSelectionBg
@@ -250,7 +251,7 @@ func (t *Table) renderRowString(rowIdx int, isSelected bool, ctx *renderContext)
 
 	// Right scroll indicator — background matches the row state
 	if scrollIndicatorRight {
-		var indicatorBg lipgloss.TerminalColor = theme.ColorBackground
+		var indicatorBg color.Color = theme.ColorBackground
 		if isSelected {
 			if t.focused {
 				indicatorBg = theme.ColorSelectionBg
@@ -272,7 +273,7 @@ func (t *Table) renderRowString(rowIdx int, isSelected bool, ctx *renderContext)
 		if actualWidth := lipgloss.Width(result); actualWidth < ctx.targetWidth {
 			extra := ctx.targetWidth - actualWidth
 			padStr := strings.Repeat(" ", extra)
-			var bg lipgloss.TerminalColor = theme.ColorBackground
+			var bg color.Color = theme.ColorBackground
 			if isSelected {
 				if t.focused {
 					bg = theme.ColorSelectionBg

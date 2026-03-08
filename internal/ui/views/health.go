@@ -4,9 +4,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/bijaya/kview/internal/analyzer"
 	"github.com/bijaya/kview/internal/analyzer/rules"
@@ -131,7 +131,7 @@ type HealthView struct {
 
 // NewHealthView creates a new health dashboard view
 func NewHealthView(client k8s.Client) *HealthView {
-	vp := viewport.New(80, 20)
+	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	vp.Style = theme.Styles.Base
 
 	return &HealthView{
@@ -192,7 +192,7 @@ func (v *HealthView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.updateContent()
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			if v.itemMode {
@@ -437,7 +437,7 @@ func (v *HealthView) View() string {
 }
 
 func (v *HealthView) renderHelpLine() string {
-	w := v.viewport.Width
+	w := v.viewport.Width()
 	var line string
 	if v.itemMode {
 		name := sectionNames[v.sectionFocus]
@@ -474,10 +474,10 @@ func (v *HealthView) ShortHelp() []key.Binding {
 
 func (v *HealthView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
-	v.viewport.Width = width
-	v.viewport.Height = height - 1 // reserve 1 line for help footer
-	if v.viewport.Height < 1 {
-		v.viewport.Height = 1
+	v.viewport.SetWidth(width)
+	v.viewport.SetHeight(height - 1) // reserve 1 line for help footer
+	if v.viewport.Height() < 1 {
+		v.viewport.SetHeight(1)
 	}
 	if len(v.pods) > 0 || v.clusterMetrics != nil || len(v.nodes) > 0 {
 		v.updateContent()

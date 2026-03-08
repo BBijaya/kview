@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/bijaya/kview/internal/k8s"
 	"github.com/bijaya/kview/internal/ui/commands"
@@ -31,7 +31,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.invalidateHeader()
 		a.updateSizes()
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle dialog first
 		if a.dialog.IsVisible() {
 			var cmd tea.Cmd

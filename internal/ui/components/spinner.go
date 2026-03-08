@@ -1,9 +1,9 @@
 package components
 
 import (
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -114,7 +114,7 @@ func (s *Spinner) ViewCentered(width, height int) string {
 		width, height,
 		lipgloss.Center, lipgloss.Center,
 		content,
-		lipgloss.WithWhitespaceBackground(theme.ColorBackground),
+		lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Background(theme.ColorBackground)),
 	)
 }
 

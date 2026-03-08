@@ -2,10 +2,11 @@ package theme
 
 import (
 	"fmt"
+	"image/color"
 	"math"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // parseHex parses a hex color string (#RRGGBB) into r, g, b components.
@@ -24,7 +25,7 @@ func toHex(r, g, b uint8) string {
 }
 
 // blendColor blends two hex colors by factor (0.0 = c1, 1.0 = c2).
-func blendColor(c1, c2 string, factor float64) lipgloss.Color {
+func blendColor(c1, c2 string, factor float64) color.Color {
 	r1, g1, b1 := parseHex(c1)
 	r2, g2, b2 := parseHex(c2)
 	r := uint8(float64(r1)*(1-factor) + float64(r2)*factor)
@@ -34,12 +35,12 @@ func blendColor(c1, c2 string, factor float64) lipgloss.Color {
 }
 
 // lightenColor lightens a hex color by factor (0.0 = unchanged, 1.0 = white).
-func lightenColor(hex string, factor float64) lipgloss.Color {
+func lightenColor(hex string, factor float64) color.Color {
 	return blendColor(hex, "#FFFFFF", factor)
 }
 
 // darkenColor darkens a hex color by factor (0.0 = unchanged, 1.0 = black).
-func darkenColor(hex string, factor float64) lipgloss.Color {
+func darkenColor(hex string, factor float64) color.Color {
 	return blendColor(hex, "#000000", factor)
 }
 
@@ -93,7 +94,7 @@ func ValidateContrast(td ThemeDefinition) []string {
 // contrastForeground picks white or black foreground text based on the
 // luminance of the background color. When selectionBg is explicitly set,
 // uses that; otherwise derives from accent via darkenColor(accent, 0.6).
-func contrastForeground(selectionBg, accent string) lipgloss.Color {
+func contrastForeground(selectionBg, accent string) color.Color {
 	bg := selectionBg
 	if bg == "" {
 		// Match the derivation in Apply(): darkenColor(accent, 0.6)

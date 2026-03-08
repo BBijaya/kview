@@ -1,10 +1,11 @@
 package theme
 
 import (
+	"image/color"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // StatusStyle returns the appropriate style for a given status
@@ -171,7 +172,7 @@ func TruncateString(s string, maxLen int) string {
 // PadToWidth pads a string to a target width with styled background spaces.
 // Uses lipgloss.Width() to measure visual width and appends independently
 // styled padding to avoid background color leaks.
-func PadToWidth(s string, width int, bg lipgloss.TerminalColor) string {
+func PadToWidth(s string, width int, bg color.Color) string {
 	w := lipgloss.Width(s)
 	if w >= width {
 		return s

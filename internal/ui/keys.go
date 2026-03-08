@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"github.com/charmbracelet/bubbles/key"
+	"charm.land/bubbles/v2/key"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )

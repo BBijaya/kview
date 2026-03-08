@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/bijaya/kview/internal/store"
 	"github.com/bijaya/kview/internal/ui/theme"
@@ -34,7 +34,7 @@ type TimelineView struct {
 
 // NewTimelineView creates a new timeline view
 func NewTimelineView(s store.Store) *TimelineView {
-	vp := viewport.New(80, 20)
+	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	vp.Style = theme.Styles.Base
 
 	return &TimelineView{
@@ -65,7 +65,7 @@ func (v *TimelineView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.updateContent()
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			return v, func() tea.Msg {
@@ -291,8 +291,8 @@ func (v *TimelineView) ShortHelp() []key.Binding {
 // SetSize sets the view dimensions
 func (v *TimelineView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
-	v.viewport.Width = width
-	v.viewport.Height = height - 5 // Account for header and footer
+	v.viewport.SetWidth(width)
+	v.viewport.SetHeight(height - 5) // Account for header and footer
 }
 
 // IsLoading returns whether the view is currently loading data

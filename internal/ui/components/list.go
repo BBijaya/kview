@@ -3,8 +3,8 @@ package components
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -109,7 +109,7 @@ func (l *List) Update(msg tea.Msg) (*List, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Up):
 			l.moveUp()

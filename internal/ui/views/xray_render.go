@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/graph"
 	"github.com/bijaya/kview/internal/ui/components"

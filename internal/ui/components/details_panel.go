@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/k8s"
 	"github.com/bijaya/kview/internal/ui/theme"
@@ -44,7 +44,7 @@ type DetailsPanel struct {
 
 // NewDetailsPanel creates a new details panel
 func NewDetailsPanel(client k8s.Client) *DetailsPanel {
-	vp := viewport.New(40, 20)
+	vp := viewport.New(viewport.WithWidth(40), viewport.WithHeight(20))
 	vp.Style = theme.Styles.Base
 
 	return &DetailsPanel{
@@ -80,8 +80,8 @@ func (p *DetailsPanel) IsVisible() bool {
 func (p *DetailsPanel) SetSize(width, height int) {
 	p.width = width
 	p.height = height
-	p.viewport.Width = width - 4  // Account for border
-	p.viewport.Height = height - 4 // Account for header and border
+	p.viewport.SetWidth(width - 4)   // Account for border
+	p.viewport.SetHeight(height - 4) // Account for header and border
 }
 
 // SetClient sets the k8s client
@@ -153,7 +153,7 @@ func (p *DetailsPanel) Update(msg tea.Msg) (*DetailsPanel, tea.Cmd) {
 		}
 		return p, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if !p.visible {
 			return p, nil
 		}

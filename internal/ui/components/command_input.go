@@ -3,10 +3,10 @@ package components
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -38,13 +38,14 @@ func NewCommandInput() *CommandInput {
 	ti := textinput.New()
 	ti.Placeholder = ""
 	ti.CharLimit = 256
-	ti.Width = 60
+	ti.SetWidth(60)
 	// Apply background to textinput styles
-	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.ColorText).Background(theme.ColorBackground)
-	ti.PromptStyle = lipgloss.NewStyle().Background(theme.ColorBackground)
-	ti.Cursor.Style = lipgloss.NewStyle().Background(theme.ColorHighlight)
+	styles := textinput.DefaultDarkStyles()
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(theme.ColorText).Background(theme.ColorBackground)
+	styles.Focused.Prompt = lipgloss.NewStyle().Background(theme.ColorBackground)
+	styles.Focused.Suggestion = lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(theme.ColorBackground)
+	ti.SetStyles(styles)
 	ti.ShowSuggestions = true
-	ti.CompletionStyle = lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(theme.ColorBackground)
 
 	return &CommandInput{
 		width:   80,
@@ -75,7 +76,7 @@ func NewCommandInput() *CommandInput {
 // SetWidth sets the command input width
 func (c *CommandInput) SetWidth(width int) {
 	c.width = width
-	c.input.Width = width - 4 // Account for ": " prefix and padding
+	c.input.SetWidth(width - 4) // Account for ": " prefix and padding
 }
 
 // IsVisible returns whether the command input is visible
@@ -125,7 +126,7 @@ func (c *CommandInput) Update(msg tea.Msg) (*CommandInput, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			c.Hide()
@@ -133,7 +134,7 @@ func (c *CommandInput) Update(msg tea.Msg) (*CommandInput, tea.Cmd) {
 				return CommandCancelMsg{}
 			}
 
-		case msg.Type == tea.KeyEnter:
+		case msg.Code == tea.KeyEnter:
 			cmd := strings.TrimSpace(c.input.Value())
 			if cmd != "" {
 				// Add to history
@@ -148,7 +149,7 @@ func (c *CommandInput) Update(msg tea.Msg) (*CommandInput, tea.Cmd) {
 				return CommandCancelMsg{}
 			}
 
-		case msg.Type == tea.KeyUp:
+		case msg.Code == tea.KeyUp:
 			// Navigate history up
 			if len(c.history) > 0 && c.historyIdx > 0 {
 				c.historyIdx--
@@ -157,7 +158,7 @@ func (c *CommandInput) Update(msg tea.Msg) (*CommandInput, tea.Cmd) {
 			}
 			return c, nil
 
-		case msg.Type == tea.KeyDown:
+		case msg.Code == tea.KeyDown:
 			// Navigate history down
 			if c.historyIdx < len(c.history)-1 {
 				c.historyIdx++

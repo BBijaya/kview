@@ -6,9 +6,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/k8s"
 	"github.com/bijaya/kview/internal/ui/theme"
@@ -73,11 +73,12 @@ func newStyledInput(placeholder string, charLimit, width int) textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
 	ti.CharLimit = charLimit
-	ti.Width = width
-	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.ColorText).Background(theme.ColorBackground)
-	ti.PromptStyle = lipgloss.NewStyle().Background(theme.ColorBackground)
-	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(theme.ColorBackground)
-	ti.Cursor.Style = lipgloss.NewStyle().Background(theme.ColorHighlight)
+	ti.SetWidth(width)
+	styles := textinput.DefaultDarkStyles()
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(theme.ColorText).Background(theme.ColorBackground)
+	styles.Focused.Prompt = lipgloss.NewStyle().Background(theme.ColorBackground)
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(theme.ColorBackground)
+	ti.SetStyles(styles)
 	return ti
 }
 
@@ -198,7 +199,7 @@ func (p *PortForwardPicker) Update(msg tea.Msg) (*PortForwardPicker, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			p.Hide()
@@ -328,7 +329,7 @@ func (p *PortForwardPicker) renderBox() string {
 	if addrWidth < 15 {
 		addrWidth = 15
 	}
-	p.addressInput.Width = addrWidth
+	p.addressInput.SetWidth(addrWidth)
 
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Background(theme.ColorBackground)
 	borderChar := borderStyle.Render

@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/k8s"
 	"github.com/bijaya/kview/internal/ui/components"
@@ -103,7 +103,7 @@ type LogsView struct {
 
 // NewLogsView creates a new logs view
 func NewLogsView(client k8s.Client) *LogsView {
-	vp := viewport.New(80, 20)
+	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	vp.Style = theme.Styles.Base
 
 	return &LogsView{
@@ -204,7 +204,7 @@ func (v *LogsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = msg.Err
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Normal mode key handling
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
@@ -392,8 +392,8 @@ func (v *LogsView) ShortHelp() []key.Binding {
 // SetSize sets the view dimensions
 func (v *LogsView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
-	v.viewport.Width = width
-	v.viewport.Height = height - 3 // Account for header and footer
+	v.viewport.SetWidth(width)
+	v.viewport.SetHeight(height - 3) // Account for header and footer
 	// Re-apply wrapping on resize
 	if v.wrapText && v.logs.Len() > 0 {
 		v.updateViewportContent()
@@ -571,8 +571,8 @@ func (v *LogsView) updateViewportContent() {
 	wasAtBottom := v.viewport.AtBottom()
 
 	var content string
-	if v.wrapText && v.viewport.Width > 0 {
-		content = wrapLines(v.logs.String(), v.viewport.Width)
+	if v.wrapText && v.viewport.Width() > 0 {
+		content = wrapLines(v.logs.String(), v.viewport.Width())
 	} else if v.searchRegex != nil {
 		content = v.applyHighlighting(v.logs.String())
 	} else if len(v.highlightedLines) > 0 {
@@ -637,14 +637,14 @@ func (v *LogsView) jumpToMatch(cursor int) {
 
 	// When wrapping is on, line indices in logLines don't map 1:1 to viewport lines.
 	// Approximate by counting wrapped lines up to the target.
-	if v.wrapText && v.viewport.Width > 0 {
+	if v.wrapText && v.viewport.Width() > 0 {
 		wrappedLine := 0
 		for i := 0; i < lineIdx && i < len(v.logLines); i++ {
 			lineLen := len(v.logLines[i])
-			if lineLen <= v.viewport.Width || v.viewport.Width <= 0 {
+			if lineLen <= v.viewport.Width() || v.viewport.Width() <= 0 {
 				wrappedLine++
 			} else {
-				wrappedLine += (lineLen + v.viewport.Width - 1) / v.viewport.Width
+				wrappedLine += (lineLen + v.viewport.Width() - 1) / v.viewport.Width()
 			}
 		}
 		v.viewport.SetYOffset(wrappedLine)
