@@ -595,3 +595,4 @@ func padLineWithBackground(line string, width int) string {
 		Render(strings.Repeat(" ", width-lineWidth))
 	return line + padding
 }
+
