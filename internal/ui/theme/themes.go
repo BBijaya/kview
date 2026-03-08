@@ -28,6 +28,7 @@ type ThemeDefinition struct {
 	// Search highlight overrides
 	SearchHighlightBg string
 	SearchHighlightFg string
+	SearchSelectedBg  string
 
 	// Delta row color overrides
 	DeltaAdd    string
@@ -428,6 +429,9 @@ func ResolveTheme(name string, overrides ThemeDefinition) (ThemeDefinition, bool
 	if overrides.SearchHighlightFg != "" {
 		td.SearchHighlightFg = overrides.SearchHighlightFg
 	}
+	if overrides.SearchSelectedBg != "" {
+		td.SearchSelectedBg = overrides.SearchSelectedBg
+	}
 	if overrides.DeltaAdd != "" {
 		td.DeltaAdd = overrides.DeltaAdd
 	}
@@ -466,6 +470,7 @@ func ThemeDefinitionFromConfig(tc config.ThemeColors) ThemeDefinition {
 		SurfaceAlt:        tc.SurfaceAlt,
 		SearchHighlightBg: tc.SearchHighlightBg,
 		SearchHighlightFg: tc.SearchHighlightFg,
+		SearchSelectedBg:  tc.SearchSelectedBg,
 		DeltaAdd:          tc.DeltaAdd,
 		DeltaModify:       tc.DeltaModify,
 		DeltaError:        tc.DeltaError,

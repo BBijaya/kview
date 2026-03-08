@@ -46,6 +46,7 @@ type SecretDecodeView struct {
 func NewSecretDecodeView(client k8s.Client) *SecretDecodeView {
 	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	vp.Style = theme.Styles.Base
+	ConfigureHighlightStyles(&vp)
 
 	return &SecretDecodeView{
 		viewport: vp,
@@ -82,11 +83,13 @@ func (v *SecretDecodeView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = nil
 			v.rawContent = msg.RawContent
 			v.content = msg.Content
-			if pattern := v.search.ActivePattern(); pattern != "" {
-				lines := strings.Split(v.rawContent, "\n")
-				v.search.ApplySearch(pattern, lines)
+			if v.search.HasSearch() {
+				matches := v.search.RecomputeMatches(v.rawContent)
+				v.viewport.SetContent(v.rawContent)
+				v.viewport.SetHighlights(matches)
+			} else {
+				v.viewport.SetContent(v.content)
 			}
-			v.updateViewportContent()
 			v.viewport.GotoTop()
 		}
 
@@ -102,17 +105,13 @@ func (v *SecretDecodeView) Update(msg tea.Msg) (View, tea.Cmd) {
 
 		case key.Matches(msg, theme.DefaultKeyMap().LogSearchNext):
 			if v.search.HasSearch() {
-				if offset := v.search.NextMatch(); offset >= 0 {
-					v.viewport.SetYOffset(offset)
-				}
+				v.viewport.HighlightNext()
 			}
 			return v, nil
 
 		case key.Matches(msg, theme.DefaultKeyMap().LogSearchPrev):
 			if v.search.HasSearch() {
-				if offset := v.search.PrevMatch(); offset >= 0 {
-					v.viewport.SetYOffset(offset)
-				}
+				v.viewport.HighlightPrevious()
 			}
 			return v, nil
 
@@ -155,12 +154,9 @@ func (v *SecretDecodeView) ApplySearch(pattern string) {
 		v.ClearSearch()
 		return
 	}
-	lines := strings.Split(v.rawContent, "\n")
-	v.search.ApplySearch(pattern, lines)
-	v.updateViewportContent()
-	if offset := v.search.CurrentMatchOffset(); offset >= 0 {
-		v.viewport.SetYOffset(offset)
-	}
+	matches := v.search.ApplySearch(pattern, v.rawContent)
+	v.viewport.SetContent(v.rawContent)
+	v.viewport.SetHighlights(matches)
 }
 
 // ActiveSearchPattern implements ViewportSearcher.
@@ -171,16 +167,8 @@ func (v *SecretDecodeView) ActiveSearchPattern() string {
 // ClearSearch implements ViewportSearcher.
 func (v *SecretDecodeView) ClearSearch() {
 	v.search.Clear()
-	v.updateViewportContent()
-}
-
-// updateViewportContent sets the viewport content with or without search highlighting.
-func (v *SecretDecodeView) updateViewportContent() {
-	if v.search.HasSearch() {
-		v.viewport.SetContent(v.search.HighlightContent(v.rawContent))
-	} else {
-		v.viewport.SetContent(v.content)
-	}
+	v.viewport.ClearHighlights()
+	v.viewport.SetContent(v.content)
 }
 
 // View renders the view

@@ -38,8 +38,9 @@ var (
 	ColorCompletedText = lipgloss.Color("#8B95A5") // Light grey for completed row text
 
 	// Search highlight
-	ColorSearchHighlightBg = lipgloss.Color("#F59E0B") // Warning amber
-	ColorSearchHighlightFg = lipgloss.Color("#1B1B3A") // Background dark
+	ColorSearchHighlightBg   = lipgloss.Color("#F59E0B") // Warning amber
+	ColorSearchHighlightFg   = lipgloss.Color("#1B1B3A") // Background dark
+	ColorSearchSelectedBg    = lipgloss.Color("#FBB040") // Brighter amber for selected match
 
 	// Delta row coloring
 	ColorDeltaAdd    = lipgloss.Color("#87CEEB") // Sky blue - new resource
@@ -112,6 +113,12 @@ func Apply(td ThemeDefinition) {
 		} else {
 			ColorSearchHighlightFg = lipgloss.Color("#FFFFFF")
 		}
+	}
+
+	if td.SearchSelectedBg != "" {
+		ColorSearchSelectedBg = lipgloss.Color(td.SearchSelectedBg)
+	} else {
+		ColorSearchSelectedBg = lightenColor(td.Warning, 0.15)
 	}
 
 	// Delta row colors

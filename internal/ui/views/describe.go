@@ -43,6 +43,7 @@ type DescribeView struct {
 func NewDescribeView(client k8s.Client) *DescribeView {
 	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	vp.Style = theme.Styles.Base
+	ConfigureHighlightStyles(&vp)
 
 	return &DescribeView{
 		viewport: vp,
@@ -85,11 +86,13 @@ func (v *DescribeView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.err = nil
 			v.rawDescription = msg.RawDescription
 			v.description = msg.Description
-			if pattern := v.search.ActivePattern(); pattern != "" {
-				lines := strings.Split(v.rawDescription, "\n")
-				v.search.ApplySearch(pattern, lines)
+			if v.search.HasSearch() {
+				matches := v.search.RecomputeMatches(v.rawDescription)
+				v.viewport.SetContent(v.rawDescription)
+				v.viewport.SetHighlights(matches)
+			} else {
+				v.viewport.SetContent(v.description)
 			}
-			v.updateViewportContent()
 			v.viewport.GotoTop()
 		}
 
@@ -105,17 +108,13 @@ func (v *DescribeView) Update(msg tea.Msg) (View, tea.Cmd) {
 
 		case key.Matches(msg, theme.DefaultKeyMap().LogSearchNext):
 			if v.search.HasSearch() {
-				if offset := v.search.NextMatch(); offset >= 0 {
-					v.viewport.SetYOffset(offset)
-				}
+				v.viewport.HighlightNext()
 			}
 			return v, nil
 
 		case key.Matches(msg, theme.DefaultKeyMap().LogSearchPrev):
 			if v.search.HasSearch() {
-				if offset := v.search.PrevMatch(); offset >= 0 {
-					v.viewport.SetYOffset(offset)
-				}
+				v.viewport.HighlightPrevious()
 			}
 			return v, nil
 
@@ -234,12 +233,9 @@ func (v *DescribeView) ApplySearch(pattern string) {
 		v.ClearSearch()
 		return
 	}
-	lines := strings.Split(v.rawDescription, "\n")
-	v.search.ApplySearch(pattern, lines)
-	v.updateViewportContent()
-	if offset := v.search.CurrentMatchOffset(); offset >= 0 {
-		v.viewport.SetYOffset(offset)
-	}
+	matches := v.search.ApplySearch(pattern, v.rawDescription)
+	v.viewport.SetContent(v.rawDescription)
+	v.viewport.SetHighlights(matches)
 }
 
 // ActiveSearchPattern implements ViewportSearcher.
@@ -250,16 +246,8 @@ func (v *DescribeView) ActiveSearchPattern() string {
 // ClearSearch implements ViewportSearcher.
 func (v *DescribeView) ClearSearch() {
 	v.search.Clear()
-	v.updateViewportContent()
-}
-
-// updateViewportContent sets the viewport content with or without search highlighting.
-func (v *DescribeView) updateViewportContent() {
-	if v.search.HasSearch() {
-		v.viewport.SetContent(v.search.HighlightContent(v.rawDescription))
-	} else {
-		v.viewport.SetContent(v.description)
-	}
+	v.viewport.ClearHighlights()
+	v.viewport.SetContent(v.description)
 }
 
 // Refresh refreshes the resource description

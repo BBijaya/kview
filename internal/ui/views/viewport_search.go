@@ -3,8 +3,8 @@ package views
 import (
 	"fmt"
 	"regexp"
-	"strings"
 
+	"charm.land/bubbles/v2/viewport"
 	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
@@ -12,20 +12,20 @@ import (
 
 // ViewportSearch is a reusable search mixin for viewport-based views.
 // Embed it in any view that displays scrollable text content.
+// Search highlighting is handled by the v2 viewport's built-in highlight support.
 type ViewportSearch struct {
-	pattern string
-	regex   *regexp.Regexp
-	matches []int // line indices with matches
-	cursor  int   // current match index (-1 = none)
+	pattern    string
+	regex      *regexp.Regexp
+	matchCount int
 }
 
-// ApplySearch compiles a case-insensitive regex pattern, scans lines for matches,
-// and sets the cursor to the first match. Falls back to literal matching if the
-// pattern is not valid regex.
-func (s *ViewportSearch) ApplySearch(pattern string, lines []string) {
+// ApplySearch compiles a case-insensitive regex pattern and finds all byte-range
+// matches in the raw content. Returns the matches suitable for viewport.SetHighlights().
+// Falls back to literal matching if the pattern is not valid regex.
+func (s *ViewportSearch) ApplySearch(pattern string, rawContent string) [][]int {
 	if pattern == "" {
 		s.Clear()
-		return
+		return nil
 	}
 	re, err := regexp.Compile("(?i)" + pattern)
 	if err != nil {
@@ -33,24 +33,28 @@ func (s *ViewportSearch) ApplySearch(pattern string, lines []string) {
 	}
 	s.pattern = pattern
 	s.regex = re
-	s.matches = nil
-	s.cursor = -1
-	for i, line := range lines {
-		if re.MatchString(line) {
-			s.matches = append(s.matches, i)
-		}
+	matches := re.FindAllStringIndex(rawContent, -1)
+	s.matchCount = len(matches)
+	return matches
+}
+
+// RecomputeMatches re-runs FindAllStringIndex with the existing compiled regex
+// against new content and updates matchCount. Used when content refreshes while
+// search is active.
+func (s *ViewportSearch) RecomputeMatches(rawContent string) [][]int {
+	if s.regex == nil {
+		return nil
 	}
-	if len(s.matches) > 0 {
-		s.cursor = 0
-	}
+	matches := s.regex.FindAllStringIndex(rawContent, -1)
+	s.matchCount = len(matches)
+	return matches
 }
 
 // Clear resets all search state.
 func (s *ViewportSearch) Clear() {
 	s.pattern = ""
 	s.regex = nil
-	s.matches = nil
-	s.cursor = -1
+	s.matchCount = 0
 }
 
 // ActivePattern returns the current search pattern, or "" if none.
@@ -63,69 +67,9 @@ func (s *ViewportSearch) HasSearch() bool {
 	return s.regex != nil
 }
 
-// MatchCount returns the number of lines matching the search pattern.
+// MatchCount returns the number of occurrences matching the search pattern.
 func (s *ViewportSearch) MatchCount() int {
-	return len(s.matches)
-}
-
-// NextMatch advances the cursor to the next match and returns the line offset,
-// or -1 if there are no matches.
-func (s *ViewportSearch) NextMatch() int {
-	if len(s.matches) == 0 {
-		return -1
-	}
-	s.cursor = (s.cursor + 1) % len(s.matches)
-	return s.matches[s.cursor]
-}
-
-// PrevMatch moves the cursor to the previous match and returns the line offset,
-// or -1 if there are no matches.
-func (s *ViewportSearch) PrevMatch() int {
-	if len(s.matches) == 0 {
-		return -1
-	}
-	s.cursor--
-	if s.cursor < 0 {
-		s.cursor = len(s.matches) - 1
-	}
-	return s.matches[s.cursor]
-}
-
-// CurrentMatchOffset returns the line offset of the current match,
-// or -1 if there are no matches.
-func (s *ViewportSearch) CurrentMatchOffset() int {
-	if s.cursor < 0 || s.cursor >= len(s.matches) {
-		return -1
-	}
-	return s.matches[s.cursor]
-}
-
-// HighlightContent applies search highlighting to raw content.
-// Matches are rendered with the search highlight style.
-func (s *ViewportSearch) HighlightContent(rawContent string) string {
-	if s.regex == nil {
-		return rawContent
-	}
-
-	highlightStyle := lipgloss.NewStyle().
-		Background(theme.ColorSearchHighlightBg).
-		Foreground(theme.ColorSearchHighlightFg)
-
-	lines := strings.Split(rawContent, "\n")
-	for i, line := range lines {
-		matches := s.regex.FindAllStringIndex(line, -1)
-		if len(matches) == 0 {
-			continue
-		}
-		// Build highlighted line from right to left to preserve indices
-		for j := len(matches) - 1; j >= 0; j-- {
-			m := matches[j]
-			matched := line[m[0]:m[1]]
-			line = line[:m[0]] + highlightStyle.Render(matched) + line[m[1]:]
-		}
-		lines[i] = line
-	}
-	return strings.Join(lines, "\n")
+	return s.matchCount
 }
 
 // StatusText returns a display string for the search state,
@@ -134,5 +78,17 @@ func (s *ViewportSearch) StatusText() string {
 	if s.pattern == "" {
 		return ""
 	}
-	return fmt.Sprintf("[/%s/ %d matches]", s.pattern, len(s.matches))
+	return fmt.Sprintf("[/%s/ %d matches]", s.pattern, s.matchCount)
+}
+
+// ConfigureHighlightStyles sets the HighlightStyle and SelectedHighlightStyle
+// on a viewport model using the theme's search highlight colors.
+func ConfigureHighlightStyles(vp *viewport.Model) {
+	vp.HighlightStyle = lipgloss.NewStyle().
+		Background(theme.ColorSearchHighlightBg).
+		Foreground(theme.ColorSearchHighlightFg)
+	vp.SelectedHighlightStyle = lipgloss.NewStyle().
+		Background(theme.ColorSearchSelectedBg).
+		Foreground(theme.ColorSearchHighlightFg).
+		Bold(true)
 }
