@@ -16,6 +16,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/bijaya/kview/internal/k8s"
 	"github.com/bijaya/kview/internal/ui/components"
 	"github.com/bijaya/kview/internal/ui/theme"
@@ -97,8 +99,6 @@ type LogsView struct {
 	// Time range
 	timeRangeIdx int
 
-	// Text wrap
-	wrapText bool
 }
 
 // NewLogsView creates a new logs view
@@ -252,7 +252,7 @@ func (v *LogsView) Update(msg tea.Msg) (View, tea.Cmd) {
 			return v, v.Refresh()
 
 		case key.Matches(msg, theme.DefaultKeyMap().LogWrap):
-			v.wrapText = !v.wrapText
+			v.viewport.SoftWrap = !v.viewport.SoftWrap
 			v.updateViewportContent()
 			return v, nil
 
@@ -343,7 +343,7 @@ func (v *LogsView) View() string {
 	if v.showPrevious {
 		status = append(status, theme.Styles.StatusWarning.Render("[previous]"))
 	}
-	if v.wrapText {
+	if v.viewport.SoftWrap {
 		status = append(status, theme.Styles.InfoValueMuted.Render("[wrap]"))
 	}
 	if v.timeRangeIdx != 5 { // not "all" (default)
@@ -394,10 +394,6 @@ func (v *LogsView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
 	v.viewport.SetWidth(width)
 	v.viewport.SetHeight(height - 3) // Account for header and footer
-	// Re-apply wrapping on resize
-	if v.wrapText && v.logs.Len() > 0 {
-		v.updateViewportContent()
-	}
 }
 
 // IsLoading returns whether the view is currently loading data
@@ -560,20 +556,20 @@ func (v *LogsView) stopStreaming() {
 	v.streaming = false
 }
 
-// updateViewportContent applies wrapping, search highlighting, or JSON highlighting,
-// then updates the viewport. These modes are mutually exclusive:
-//   - Wrapping uses raw content (ANSI codes break byte-length line splitting)
+// updateViewportContent applies search highlighting or JSON highlighting,
+// then updates the viewport. Search and JSON highlighting are mutually exclusive:
 //   - Search uses raw content (ANSI codes break regex index matching)
 //   - Default uses JSON-highlighted lines when available
+//
+// Wrapping (when viewport.SoftWrap is true) is handled by the viewport at render
+// time using ANSI-aware ansi.Cut(), so highlighted content wraps correctly.
 //
 // Auto-scrolls to bottom if the viewport was already at the bottom before the update.
 func (v *LogsView) updateViewportContent() {
 	wasAtBottom := v.viewport.AtBottom()
 
 	var content string
-	if v.wrapText && v.viewport.Width() > 0 {
-		content = wrapLines(v.logs.String(), v.viewport.Width())
-	} else if v.searchRegex != nil {
+	if v.searchRegex != nil {
 		content = v.applyHighlighting(v.logs.String())
 	} else if len(v.highlightedLines) > 0 {
 		content = strings.Join(v.highlightedLines, "\n")
@@ -636,15 +632,17 @@ func (v *LogsView) jumpToMatch(cursor int) {
 	lineIdx := v.searchMatches[cursor]
 
 	// When wrapping is on, line indices in logLines don't map 1:1 to viewport lines.
-	// Approximate by counting wrapped lines up to the target.
-	if v.wrapText && v.viewport.Width() > 0 {
+	// Count virtual (wrapped) lines up to the target using ANSI-aware width measurement
+	// to match the viewport's own calculateLine() math.
+	if v.viewport.SoftWrap && v.viewport.Width() > 0 {
 		wrappedLine := 0
+		width := v.viewport.Width()
 		for i := 0; i < lineIdx && i < len(v.logLines); i++ {
-			lineLen := len(v.logLines[i])
-			if lineLen <= v.viewport.Width() || v.viewport.Width() <= 0 {
+			lineWidth := ansi.StringWidth(v.logLines[i])
+			if lineWidth <= width {
 				wrappedLine++
 			} else {
-				wrappedLine += (lineLen + v.viewport.Width() - 1) / v.viewport.Width()
+				wrappedLine += (lineWidth + width - 1) / width
 			}
 		}
 		v.viewport.SetYOffset(wrappedLine)
@@ -691,30 +689,3 @@ func (v *LogsView) saveLogsCmd() tea.Cmd {
 	}
 }
 
-// wrapLines wraps long lines to fit the viewport width
-func wrapLines(text string, width int) string {
-	if width <= 0 {
-		return text
-	}
-
-	lines := strings.Split(text, "\n")
-	var wrapped []string
-
-	for _, line := range lines {
-		if len(line) <= width {
-			wrapped = append(wrapped, line)
-			continue
-		}
-
-		// Wrap long lines
-		for len(line) > width {
-			wrapped = append(wrapped, line[:width])
-			line = line[width:]
-		}
-		if len(line) > 0 {
-			wrapped = append(wrapped, line)
-		}
-	}
-
-	return strings.Join(wrapped, "\n")
-}
