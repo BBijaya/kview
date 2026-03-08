@@ -231,7 +231,7 @@ func (v *HelmContentView) View() string {
 	}
 
 	// Footer
-	footer := theme.Styles.Help.Render("↑↓/pgup/pgdn scroll • g/G top/bottom • / search • n/N next/prev • esc back")
+	footer := theme.Styles.Help.Render("↑↓/←→ scroll • g/G top/bottom • / search • n/N next/prev • esc back")
 	footerWidth := lipgloss.Width(footer)
 	if footerWidth < v.width {
 		footer += bgStyle.Render(strings.Repeat(" ", v.width-footerWidth))
