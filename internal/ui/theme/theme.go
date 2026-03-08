@@ -148,7 +148,6 @@ func init() {
 // Called at init time for defaults, and again from main() after Apply().
 func ComputeStyles() {
 	Styles.Base = lipgloss.NewStyle().
-		Foreground(ColorText).
 		Background(ColorBackground)
 
 	Styles.Focused = lipgloss.NewStyle().
@@ -176,7 +175,6 @@ func ComputeStyles() {
 		Padding(0, 1)
 
 	Styles.TableRow = lipgloss.NewStyle().
-		Foreground(ColorText).
 		Background(ColorBackground).
 		Padding(0, 1)
 
@@ -258,7 +256,6 @@ func ComputeStyles() {
 		Padding(0, 1)
 
 	Styles.PaletteItem = lipgloss.NewStyle().
-		Foreground(ColorText).
 		Padding(0, 1)
 
 	Styles.PaletteSelected = lipgloss.NewStyle().
@@ -316,8 +313,7 @@ func ComputeStyles() {
 
 	// Command input styles
 	Styles.CommandLine = lipgloss.NewStyle().
-		Background(ColorBackground).
-		Foreground(ColorText)
+		Background(ColorBackground)
 
 	Styles.CommandPrefix = lipgloss.NewStyle().
 		Foreground(ColorHighlight).
@@ -325,7 +321,6 @@ func ComputeStyles() {
 		Bold(true)
 
 	Styles.CommandInput = lipgloss.NewStyle().
-		Foreground(ColorText).
 		Background(ColorBackground)
 
 	// Row indicator
@@ -495,7 +490,6 @@ func ComputeStyles() {
 		Align(lipgloss.Center)
 
 	Styles.EmptyStateTitle = lipgloss.NewStyle().
-		Foreground(ColorText).
 		Background(ColorBackground).
 		Bold(true).
 		Align(lipgloss.Center)
