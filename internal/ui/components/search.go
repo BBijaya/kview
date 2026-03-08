@@ -3,10 +3,10 @@ package components
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -33,12 +33,13 @@ func NewSearchInput() *SearchInput {
 	ti := textinput.New()
 	ti.Placeholder = "Type to filter (! -f -l)..."
 	ti.CharLimit = 100
-	ti.Width = 30
+	ti.SetWidth(30)
 	// Apply background to textinput styles (same as CommandInput)
-	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.ColorText).Background(theme.ColorBackground)
-	ti.PromptStyle = lipgloss.NewStyle().Background(theme.ColorBackground)
-	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(theme.ColorBackground)
-	ti.Cursor.Style = lipgloss.NewStyle().Background(theme.ColorHighlight)
+	styles := textinput.DefaultDarkStyles()
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(theme.ColorText).Background(theme.ColorBackground)
+	styles.Focused.Prompt = lipgloss.NewStyle().Background(theme.ColorBackground)
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(theme.ColorBackground)
+	ti.SetStyles(styles)
 
 	return &SearchInput{
 		input:   ti,
@@ -50,7 +51,7 @@ func NewSearchInput() *SearchInput {
 // SetWidth sets the input width
 func (s *SearchInput) SetWidth(width int) {
 	s.width = width
-	s.input.Width = width - 4 // Account for "/ " prefix and padding
+	s.input.SetWidth(width - 4) // Account for "/ " prefix and padding
 }
 
 // Show shows the input and focuses it
@@ -95,7 +96,7 @@ func (s *SearchInput) Update(msg tea.Msg) (*SearchInput, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			s.Hide()

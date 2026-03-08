@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/k8s"
 	"github.com/bijaya/kview/internal/ui/components"
@@ -98,7 +98,7 @@ func (v *PVCsView) Update(msg tea.Msg) (View, tea.Cmd) {
 	case components.FilterClosedMsg:
 		v.filter.Hide()
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle filter input first if visible
 		if v.filter.IsVisible() {
 			var cmd tea.Cmd

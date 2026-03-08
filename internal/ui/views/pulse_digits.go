@@ -1,10 +1,11 @@
 package views
 
 import (
+	"image/color"
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -27,7 +28,7 @@ var bigDigits = [10][3]string{
 // renderBigNumber renders an integer as big 3x3 box-drawing digits.
 // maxDigits controls zero-padding (leading zeros rendered in muted color).
 // Returns 3 styled lines.
-func renderBigNumber(n int, color lipgloss.TerminalColor, maxDigits int) [3]string {
+func renderBigNumber(n int, color color.Color, maxDigits int) [3]string {
 	if n < 0 {
 		n = 0
 	}

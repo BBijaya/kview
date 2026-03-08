@@ -5,7 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/components"
 	"github.com/bijaya/kview/internal/ui/theme"
@@ -16,15 +17,17 @@ import (
 //   - Header (borderless): cluster info + shortcuts + category/resource tabs (7 plain text rows)
 //   - Command box (conditional): appears between header and body when : is pressed
 //   - Body box (bordered): resource label + main table/view content
-func (a *App) View() string {
+func (a *App) View() tea.View {
 	if a.quitting {
-		return "Goodbye!\n"
+		return tea.NewView("Goodbye!\n")
 	}
 
 	// During shell exec, return a blank screen so the renderer's final flush
 	// before ReleaseTerminal writes invisible content (no TUI leak to normal screen).
 	if a.execing {
-		return strings.Repeat("\n", max(a.height-1, 0))
+		v := tea.NewView(strings.Repeat("\n", max(a.height-1, 0)))
+		v.AltScreen = true
+		return v
 	}
 
 	// Ensure minimum dimensions
@@ -167,13 +170,10 @@ func (a *App) View() string {
 		content = a.toasts.ViewOverlay(content)
 	}
 
-	// Ensure exactly height lines of output.
-	// This enables Bubble Tea's line-diff skip optimization (standard_renderer.go:194)
-	// which only activates when len(newLines) <= len(oldLines). A stable line count
-	// means the renderer can skip unchanged header/footer lines during scrolling.
-	content = a.normalizeLineCount(content, height, width)
-
-	return content
+	v := tea.NewView(content)
+	v.AltScreen = true
+	v.BackgroundColor = theme.ColorBackground
+	return v
 }
 
 // getCategoryName returns the current category name
@@ -581,24 +581,6 @@ func (a *App) renderFooter(width int) string {
 		center +
 		bgStyle.Render(strings.Repeat(" ", rightPad))
 	return padLineWithBackground(line, width)
-}
-
-// normalizeLineCount ensures the output has exactly targetHeight lines.
-// This enables Bubble Tea's line-diff skip optimization which requires
-// len(newLines) <= len(oldLines) to skip unchanged lines.
-func (a *App) normalizeLineCount(content string, targetHeight, width int) string {
-	lines := strings.Split(content, "\n")
-	if len(lines) < targetHeight {
-		bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
-		emptyLine := bgStyle.Render(strings.Repeat(" ", width))
-		for len(lines) < targetHeight {
-			lines = append(lines, emptyLine)
-		}
-	}
-	if len(lines) > targetHeight {
-		lines = lines[:targetHeight]
-	}
-	return strings.Join(lines, "\n")
 }
 
 // padLineWithBackground pads a single line to full width with background

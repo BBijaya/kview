@@ -1,6 +1,6 @@
 package theme
 
-import "github.com/charmbracelet/bubbles/key"
+import "charm.land/bubbles/v2/key"
 
 // KeyMap defines all keybindings for the application
 type KeyMap struct {

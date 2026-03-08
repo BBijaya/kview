@@ -1,10 +1,11 @@
 package views
 
 import (
+	"image/color"
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/analyzer"
 	"github.com/bijaya/kview/internal/ui/theme"
@@ -87,7 +88,7 @@ func healthPadRow(line string, width int, isSelected bool) string {
 	if lineWidth >= width {
 		return line
 	}
-	var bg lipgloss.TerminalColor = theme.ColorBackground
+	var bg color.Color = theme.ColorBackground
 	if isSelected {
 		bg = theme.ColorSelectionBg
 	}
@@ -97,7 +98,7 @@ func healthPadRow(line string, width int, isSelected bool) string {
 // healthCellStyle returns a lipgloss style for rendering a cell value in health view rows.
 // Selected rows use selection background with the original foreground color preserved,
 // matching how the table component renders status-colored cells on selection.
-func healthCellStyle(fg lipgloss.TerminalColor, isSelected bool) lipgloss.Style {
+func healthCellStyle(fg color.Color, isSelected bool) lipgloss.Style {
 	bg := theme.ColorBackground
 	if isSelected {
 		bg = theme.ColorSelectionBg
@@ -216,7 +217,7 @@ func renderBar(pct int, barWidth int) string {
 		emptyStyle.Render(strings.Repeat("░", empty))
 }
 
-func barColor(pct int) lipgloss.TerminalColor {
+func barColor(pct int) color.Color {
 	if pct >= 85 {
 		return theme.ColorError
 	}

@@ -2,6 +2,8 @@ package views
 
 import (
 	"bytes"
+	"fmt"
+	"image/color"
 	"strings"
 
 	"github.com/alecthomas/chroma/v2"
@@ -10,6 +12,12 @@ import (
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
+
+// colorToHex converts a color.Color to a hex string (#RRGGBB).
+func colorToHex(c color.Color) string {
+	r, g, b, _ := c.RGBA()
+	return fmt.Sprintf("#%02X%02X%02X", r>>8, g>>8, b>>8)
+}
 
 func init() {
 	theme.OnComputeStyles(ResetHighlight)
@@ -49,16 +57,16 @@ func initHighlight() {
 	termFormatter = formatters.Get("terminal16m")
 
 	kviewStyle = chroma.MustNewStyle("kview", chroma.StyleEntries{
-		chroma.Background:      string(theme.ColorText) + " bg:" + string(theme.ColorBackground),
-		chroma.Text:            string(theme.ColorText),
-		chroma.NameTag:         string(theme.ColorHighlight),
-		chroma.NameAttribute:   string(theme.ColorHighlight),
-		chroma.Literal:         string(theme.ColorSuccess),
-		chroma.LiteralString:   string(theme.ColorSuccess),
-		chroma.LiteralNumber:   string(theme.ColorAccent),
-		chroma.KeywordConstant: string(theme.ColorWarning),
-		chroma.Comment:         string(theme.ColorMuted),
-		chroma.Punctuation:     string(theme.ColorText),
+		chroma.Background:      colorToHex(theme.ColorText) + " bg:" + colorToHex(theme.ColorBackground),
+		chroma.Text:            colorToHex(theme.ColorText),
+		chroma.NameTag:         colorToHex(theme.ColorHighlight),
+		chroma.NameAttribute:   colorToHex(theme.ColorHighlight),
+		chroma.Literal:         colorToHex(theme.ColorSuccess),
+		chroma.LiteralString:   colorToHex(theme.ColorSuccess),
+		chroma.LiteralNumber:   colorToHex(theme.ColorAccent),
+		chroma.KeywordConstant: colorToHex(theme.ColorWarning),
+		chroma.Comment:         colorToHex(theme.ColorMuted),
+		chroma.Punctuation:     colorToHex(theme.ColorText),
 	})
 }
 

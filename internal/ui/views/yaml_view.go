@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"gopkg.in/yaml.v3"
 
 	"github.com/bijaya/kview/internal/k8s"
@@ -43,7 +43,7 @@ type YAMLView struct {
 
 // NewYAMLView creates a new YAML view
 func NewYAMLView(client k8s.Client) *YAMLView {
-	vp := viewport.New(80, 20)
+	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	vp.Style = theme.Styles.Base
 
 	return &YAMLView{
@@ -95,7 +95,7 @@ func (v *YAMLView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.viewport.GotoTop()
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			return v, func() tea.Msg {
@@ -250,8 +250,8 @@ func (v *YAMLView) ShortHelp() []key.Binding {
 // SetSize sets the view dimensions
 func (v *YAMLView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
-	v.viewport.Width = width
-	v.viewport.Height = height - 3 // Account for header and footer
+	v.viewport.SetWidth(width)
+	v.viewport.SetHeight(height - 3) // Account for header and footer
 }
 
 // IsLoading returns whether the view is currently loading data

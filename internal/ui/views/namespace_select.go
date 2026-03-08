@@ -3,9 +3,9 @@ package views
 import (
 	"context"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/k8s"
 	"github.com/bijaya/kview/internal/ui/components"
@@ -77,7 +77,7 @@ func (v *NamespaceSelectView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.updateTable()
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Enter):
 			if row := v.table.SelectedRow(); row != nil {

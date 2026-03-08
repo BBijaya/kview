@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/k8s"
 	"github.com/bijaya/kview/internal/ui/components"
@@ -44,7 +44,7 @@ type SecretDecodeView struct {
 
 // NewSecretDecodeView creates a new secret decode view
 func NewSecretDecodeView(client k8s.Client) *SecretDecodeView {
-	vp := viewport.New(80, 20)
+	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	vp.Style = theme.Styles.Base
 
 	return &SecretDecodeView{
@@ -90,7 +90,7 @@ func (v *SecretDecodeView) Update(msg tea.Msg) (View, tea.Cmd) {
 			v.viewport.GotoTop()
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			return v, func() tea.Msg {
@@ -233,8 +233,8 @@ func (v *SecretDecodeView) ShortHelp() []key.Binding {
 
 func (v *SecretDecodeView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
-	v.viewport.Width = width
-	v.viewport.Height = height - 3
+	v.viewport.SetWidth(width)
+	v.viewport.SetHeight(height - 3)
 }
 
 func (v *SecretDecodeView) IsLoading() bool { return v.loading }

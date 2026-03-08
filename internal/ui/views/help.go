@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/bijaya/kview/internal/ui/theme"
 )
@@ -21,7 +21,7 @@ type HelpView struct {
 
 // NewHelpView creates a new help view.
 func NewHelpView() *HelpView {
-	vp := viewport.New(80, 20)
+	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	vp.Style = theme.Styles.Base
 
 	return &HelpView{
@@ -39,7 +39,7 @@ func (v *HelpView) Init() tea.Cmd {
 // Update handles messages.
 func (v *HelpView) Update(msg tea.Msg) (View, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			return v, func() tea.Msg { return GoBackMsg{} }
@@ -97,8 +97,8 @@ func (v *HelpView) ShortHelp() []key.Binding {
 
 func (v *HelpView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
-	v.viewport.Width = width
-	v.viewport.Height = height - 3
+	v.viewport.SetWidth(width)
+	v.viewport.SetHeight(height - 3)
 	if width != v.lastBuiltWidth {
 		v.lastBuiltWidth = width
 		v.viewport.SetContent(v.buildContent())
