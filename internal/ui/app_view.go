@@ -173,6 +173,7 @@ func (a *App) View() tea.View {
 	v := tea.NewView(content)
 	v.AltScreen = true
 	v.BackgroundColor = theme.ColorBackground
+	v.ForegroundColor = theme.ColorText
 	return v
 }
 
