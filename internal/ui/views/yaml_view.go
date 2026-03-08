@@ -210,7 +210,7 @@ func (v *YAMLView) View() string {
 	}
 
 	// Footer with help
-	footer := theme.Styles.Help.Render("↑↓/pgup/pgdn scroll • g/G top/bottom • / search • n/N next/prev • esc back")
+	footer := theme.Styles.Help.Render("↑↓/←→ scroll • g/G top/bottom • / search • n/N next/prev • esc back")
 
 	// Pad footer to full width
 	footerWidth := lipgloss.Width(footer)

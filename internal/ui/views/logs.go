@@ -364,7 +364,7 @@ func (v *LogsView) View() string {
 	}
 
 	// Footer
-	footer := theme.Styles.Help.Render("↑↓ scroll • g/G top/bottom • f tail • / search • n/N next/prev • t timestamps • p previous • w wrap • ctrl+t range • ctrl+s save • x clear • esc back")
+	footer := theme.Styles.Help.Render("↑↓/←→ scroll • g/G top/bottom • f tail • / search • n/N next/prev • t timestamps • p previous • w wrap • ctrl+t range • ctrl+s save • x clear • esc back")
 
 	// Pad footer to full width
 	footerWidth := lipgloss.Width(footer)
