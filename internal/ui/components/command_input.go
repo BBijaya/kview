@@ -25,12 +25,13 @@ type CommandInput struct {
 	width      int
 	visible    bool
 	input      textinput.Model
-	commands      []string // Available commands for completion
-	namespaces    []string // Dynamic namespace completions
-	contexts      []string // Dynamic context completions
-	pfSessionIDs  []string // Dynamic port-forward session ID completions
-	history       []string
-	historyIdx int
+	commands            []string // Static commands for completion
+	discoveredResources []string // Discovered API resource names from cluster
+	namespaces          []string // Dynamic namespace completions
+	contexts            []string // Dynamic context completions
+	pfSessionIDs        []string // Dynamic port-forward session ID completions
+	history             []string
+	historyIdx          int
 }
 
 // NewCommandInput creates a new command input component
@@ -89,7 +90,7 @@ func (c *CommandInput) Show() {
 	c.visible = true
 	c.input.Reset()
 	c.input.Focus()
-	c.input.SetSuggestions(c.commands)
+	c.input.SetSuggestions(c.mergedCommands())
 	c.historyIdx = len(c.history)
 }
 
@@ -106,6 +107,30 @@ func (c *CommandInput) SetContexts(contexts []string) {
 // SetPortForwardIDs updates the port-forward session IDs for `:pf-stop` completion
 func (c *CommandInput) SetPortForwardIDs(ids []string) {
 	c.pfSessionIDs = ids
+}
+
+// SetDiscoveredResources updates the discovered API resource names for autocomplete
+func (c *CommandInput) SetDiscoveredResources(resources []string) {
+	c.discoveredResources = resources
+}
+
+// mergedCommands returns static commands merged with discovered resources, deduplicated.
+func (c *CommandInput) mergedCommands() []string {
+	seen := make(map[string]bool, len(c.commands)+len(c.discoveredResources))
+	var merged []string
+	for _, cmd := range c.commands {
+		if !seen[cmd] {
+			merged = append(merged, cmd)
+			seen[cmd] = true
+		}
+	}
+	for _, res := range c.discoveredResources {
+		if !seen[res] {
+			merged = append(merged, res)
+			seen[res] = true
+		}
+	}
+	return merged
 }
 
 // Hide hides the command input
@@ -261,7 +286,7 @@ func (c *CommandInput) updateDynamicSuggestions() {
 	if len(c.namespaces) > 0 {
 		if spaceIdx := strings.IndexByte(val, ' '); spaceIdx > 0 {
 			cmd := val[:spaceIdx]
-			if resourceCommands[cmd] {
+			if c.isResourceCommand(cmd) {
 				prefix := cmd + " "
 				suggestions := make([]string, 0, len(c.namespaces)+1)
 				suggestions = append(suggestions, prefix+"all")
@@ -274,7 +299,20 @@ func (c *CommandInput) updateDynamicSuggestions() {
 		}
 	}
 
-	c.input.SetSuggestions(c.commands)
+	c.input.SetSuggestions(c.mergedCommands())
+}
+
+// isResourceCommand checks if a command is a resource type (hardcoded or discovered).
+func (c *CommandInput) isResourceCommand(cmd string) bool {
+	if resourceCommands[cmd] {
+		return true
+	}
+	for _, res := range c.discoveredResources {
+		if res == cmd {
+			return true
+		}
+	}
+	return false
 }
 
 // matchPrefix checks if val starts with any of the given prefixes and returns the matched one.

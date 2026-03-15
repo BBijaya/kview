@@ -202,6 +202,7 @@ type CommandCompletionsMsg struct {
 	Namespaces     []string
 	Contexts       []string
 	PortForwardIDs []string
+	Resources      []string // Discovered API resource names for autocomplete
 }
 
 // ContextSwitchedMsg is sent when context switch completes

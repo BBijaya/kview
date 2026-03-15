@@ -369,6 +369,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.commandInput.SetNamespaces(msg.Namespaces)
 		a.commandInput.SetContexts(msg.Contexts)
 		a.commandInput.SetPortForwardIDs(msg.PortForwardIDs)
+		a.commandInput.SetDiscoveredResources(msg.Resources)
 		return a, nil
 
 	case components.FilterChangedMsg:
