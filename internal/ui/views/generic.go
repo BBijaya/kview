@@ -45,12 +45,13 @@ type GenericResourceView struct {
 	filter       *components.SearchInput
 	client       k8s.Client
 	resources    []k8s.Resource
-	showNS       bool
-	loading      bool
-	err          error
-	resourceName string // plural for API calls, e.g. "certificates"
-	displayName  string // for UI, e.g. "Certificates"
-	kindName     string // PascalCase kind for describe/delete, e.g. "Certificate"
+	showNS        bool
+	clusterScoped bool // true for cluster-scoped resources (never show NAMESPACE)
+	loading       bool
+	err           error
+	resourceName  string // plural for API calls, e.g. "certificates"
+	displayName   string // for UI, e.g. "Certificates"
+	kindName      string // PascalCase kind for describe/delete, e.g. "Certificate"
 }
 
 // NewGenericResourceView creates a new generic resource view
@@ -69,14 +70,24 @@ func NewGenericResourceView(client k8s.Client) *GenericResourceView {
 	return v
 }
 
-// SetResource configures which resource type to display and resets state
-func (v *GenericResourceView) SetResource(resource, kind, display string) {
+// SetResource configures which resource type to display and resets state.
+// namespaced indicates whether the resource is namespace-scoped; cluster-scoped
+// resources never show the NAMESPACE column.
+func (v *GenericResourceView) SetResource(resource, kind, display string, namespaced bool) {
 	v.resourceName = resource
 	v.kindName = kind
 	v.displayName = display
+	v.clusterScoped = !namespaced
 	v.resources = nil
 	v.err = nil
 	v.loading = true
+
+	// For cluster-scoped resources, always hide the namespace column
+	if v.clusterScoped {
+		v.showNS = false
+		v.table.SetColumns(genericColumns(false))
+	}
+
 	v.table.SetEmptyState("", "No "+display+" found",
 		"No "+display+" exist in this namespace", "")
 	v.table.SetRows(nil)
@@ -292,9 +303,17 @@ func (v *GenericResourceView) IsLoading() bool {
 	return v.loading
 }
 
-// SetNamespace overrides BaseView to toggle the NAMESPACE column
+// SetNamespace overrides BaseView to toggle the NAMESPACE column.
+// Cluster-scoped resources never show the NAMESPACE column.
 func (v *GenericResourceView) SetNamespace(ns string) {
 	v.BaseView.SetNamespace(ns)
+	if v.clusterScoped {
+		if v.showNS {
+			v.showNS = false
+			v.table.SetColumns(genericColumns(false))
+		}
+		return
+	}
 	newShowNS := (ns == "")
 	if newShowNS != v.showNS {
 		v.showNS = newShowNS
