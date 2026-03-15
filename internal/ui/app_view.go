@@ -108,9 +108,7 @@ func (a *App) View() tea.View {
 
 	// === 3. Build body content (table only) ===
 	var bodyContent string
-	if a.isDisconnected {
-		bodyContent = a.renderConnectionError(innerWidth, contentHeight)
-	} else if view, ok := a.views[a.activeView]; ok {
+	if view, ok := a.views[a.activeView]; ok {
 		view.SetSize(innerWidth, contentHeight)
 		bodyContent = view.View()
 	}
@@ -384,96 +382,6 @@ func (a *App) getViewKind() string {
 	}
 }
 
-// renderConnectionError renders an error message when not connected to a cluster
-func (a *App) renderConnectionError(width, height int) string {
-	// Ensure minimum dimensions
-	if width < 20 {
-		width = 20
-	}
-	if height < 5 {
-		height = 5
-	}
-
-	// Background style for padding
-	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
-
-	// Build error message lines
-	errorIcon := theme.Styles.StatusError.Render("✗")
-	title := theme.Styles.StatusError.Bold(true).Render("Connection Error")
-
-	// Error message - safely truncate
-	msg := a.connectionError
-	maxMsgLen := width - 10
-	if maxMsgLen < 10 {
-		maxMsgLen = 10
-	}
-	if len(msg) > maxMsgLen {
-		msg = msg[:maxMsgLen-3] + "..."
-	}
-	errorMsg := theme.Styles.StatusUnknown.Render(msg)
-
-	// Help text
-	helpLines := []string{
-		"",
-		theme.Styles.HelpDesc.Render("To fix this issue:"),
-		"",
-		theme.Styles.HelpKey.Render("  1. ") + theme.Styles.Base.Render("Ensure kubectl is installed and configured"),
-		theme.Styles.HelpKey.Render("  2. ") + theme.Styles.Base.Render("Create or check your kubeconfig file at ~/.kube/config"),
-		theme.Styles.HelpKey.Render("  3. ") + theme.Styles.Base.Render("Run: kubectl config view"),
-		theme.Styles.HelpKey.Render("  4. ") + theme.Styles.Base.Render("Restart kview after configuring"),
-		"",
-		theme.Styles.HelpDesc.Render("Press ") + theme.Styles.HelpKey.Render("q") + theme.Styles.HelpDesc.Render(" to quit"),
-	}
-
-	// Build content
-	var lines []string
-
-	// Add some top padding
-	topPadding := (height - len(helpLines) - 4) / 3
-	if topPadding < 0 {
-		topPadding = 0
-	}
-	for i := 0; i < topPadding; i++ {
-		lines = append(lines, "")
-	}
-
-	// Center the content
-	centerPad := (width - 50) / 2
-	if centerPad < 0 {
-		centerPad = 0
-	}
-	padding := bgStyle.Render(strings.Repeat(" ", centerPad))
-
-	lines = append(lines, padding+errorIcon+bgStyle.Render(" ")+title)
-	lines = append(lines, "")
-	lines = append(lines, padding+errorMsg)
-
-	for _, line := range helpLines {
-		lines = append(lines, padding+line)
-	}
-
-	// Fill remaining height
-	for len(lines) < height {
-		lines = append(lines, "")
-	}
-
-	// Truncate to height if needed
-	if len(lines) > height {
-		lines = lines[:height]
-	}
-
-	// Pad each line to width with background color
-	for i, line := range lines {
-		lineWidth := lipgloss.Width(line)
-		if lineWidth < width {
-			// Use background style for padding
-			bgPadding := bgStyle.Render(strings.Repeat(" ", width-lineWidth))
-			lines[i] = line + bgPadding
-		}
-	}
-
-	return strings.Join(lines, "\n")
-}
 
 // renderCommandBox renders the command input inside a bordered box (k9s style)
 func (a *App) renderCommandBox(width int) string {
