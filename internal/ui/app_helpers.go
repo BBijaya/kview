@@ -288,7 +288,23 @@ func (a *App) loadCommandCompletions() tea.Cmd {
 		for _, s := range a.pfManager.ActiveSessions() {
 			pfIDs = append(pfIDs, fmt.Sprintf("%d", s.ID))
 		}
-		return CommandCompletionsMsg{Namespaces: namespaces, Contexts: contextNames, PortForwardIDs: pfIDs}
+		var resourceNames []string
+		if reg := a.client.APIResources(); reg != nil {
+			seen := make(map[string]bool)
+			for _, info := range reg.All() {
+				if !seen[info.Resource] {
+					resourceNames = append(resourceNames, info.Resource)
+					seen[info.Resource] = true
+				}
+				for _, sn := range info.ShortNames {
+					if !seen[sn] {
+						resourceNames = append(resourceNames, sn)
+						seen[sn] = true
+					}
+				}
+			}
+		}
+		return CommandCompletionsMsg{Namespaces: namespaces, Contexts: contextNames, PortForwardIDs: pfIDs, Resources: resourceNames}
 	}
 }
 
