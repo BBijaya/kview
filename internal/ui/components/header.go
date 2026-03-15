@@ -51,6 +51,15 @@ type Header struct {
 	highlightTabs bool
 }
 
+// shortcutItem represents a single keyboard shortcut for the header menu
+type shortcutItem struct {
+	key  string // e.g. "d", "ctrl+d", "shift+f"
+	desc string // e.g. "Describe", "Delete", "Port-Forward"
+}
+
+// shortcutMaxRows is the number of rows available for shortcuts (matches info pane rows)
+const shortcutMaxRows = 6
+
 // NewHeader creates a new header component
 func NewHeader() *Header {
 	return &Header{
@@ -312,44 +321,59 @@ func (h *Header) InfoPaneView() string {
 	// Get values with defaults and proper styles
 	ctxVal, ctxStyle := getStyledValue(h.context, valueStyle)
 	clusterVal, clusterStyle := getStyledValue(h.clusterName, valueStyle)
-	userVal, userStyle := getStyledValue(theme.TruncateString(h.user, 30), valueStyle)
+	userVal, userStyle := getStyledValue(h.user, valueStyle)
 	k8sVerVal, k8sVerStyle := getStyledValue(h.serverVersion, valueStyle)
 	cpuVal, cpuStyle := getStyledValue(h.cpuUsage, mutedStyle)
 	memVal, memStyle := getStyledValue(h.memUsage, mutedStyle)
 
-	// Append access mode to context value
+	// Calculate column 1 width (info column)
+	seventh := h.width / 7
+	col1Width := seventh * 2
+	if col1Width < 25 {
+		col1Width = 25
+	}
+
+	// Available width for shortcut columns
+	remaining := h.width - col1Width
+
+	// Truncate all column 1 values to fit within col1Width
+	// Overhead: 2 (leading spaces) + 8 (label) + 1 (space after label) = 11
+	maxValueWidth := col1Width - 11
+	if maxValueWidth < 5 {
+		maxValueWidth = 5
+	}
+
+	// Context line has access mode badge eating into its budget
+	ctxMaxWidth := maxValueWidth
+	if h.accessMode != "" {
+		ctxMaxWidth -= len(h.accessMode) + 3 // " [XX]"
+		if ctxMaxWidth < 5 {
+			ctxMaxWidth = 5
+		}
+	}
+	ctxVal = theme.TruncateString(ctxVal, ctxMaxWidth)
+	clusterVal = theme.TruncateString(clusterVal, maxValueWidth)
+	userVal = theme.TruncateString(userVal, maxValueWidth)
+	k8sVerVal = theme.TruncateString(k8sVerVal, maxValueWidth)
+	cpuVal = theme.TruncateString(cpuVal, maxValueWidth)
+	memVal = theme.TruncateString(memVal, maxValueWidth)
+
+	// Append access mode to context value (after truncation)
 	ctxDisplay := ctxStyle.Render(ctxVal)
 	if h.accessMode != "" {
 		ctxDisplay += bgPadStyle.Render(" ") + accessModeStyle.Render("["+h.accessMode+"]")
 	}
 
-	// Calculate column widths (split into 7 equal parts)
-	// Col1 gets 2 parts, Col2 gets 2 parts, Col3 gets 1 part, Col4 gets 2 parts
-	seventh := h.width / 7
-	col1Width := seventh * 2
-	col2Width := seventh * 2
-	col3Width := seventh
-	if col1Width < 25 {
-		col1Width = 25
-	}
-	if col2Width < 20 {
-		col2Width = 20
-	}
-	if col3Width < 14 {
-		col3Width = 14
-	}
+	// Layout shortcut columns using k9s-style vertical flow
+	items := h.getShortcutItems()
+	shortcutCols, shortcutWidths := h.layoutShortcutColumns(items, remaining)
 
-	// Get navigation shortcuts (column 2), filter hints (column 3), contextual shortcuts (column 4)
-	shortcuts := h.getShortcutRows()
-	filterHints := h.getFilterHintRows()
-	contextual := h.getContextualRows()
-
-	// Build 6 info rows with 4 columns each
+	// Build 6 info rows
 	// Labels padded to 8 chars (max of "Context:", "Cluster:", "K8s Rev:")
 	labelWidth := 8
 	infoRows := []struct {
-		label        string
-		renderedVal  string
+		label       string
+		renderedVal string
 	}{
 		{"Context:", ctxDisplay},
 		{"Cluster:", clusterStyle.Render(clusterVal)},
@@ -365,25 +389,25 @@ func (h *Header) InfoPaneView() string {
 		paddedLabel := labelStyle.Render(fmt.Sprintf("%-*s", labelWidth, info.label))
 		col1 := bgPadStyle.Render("  ") + paddedLabel + bgPadStyle.Render(" ") + info.renderedVal
 
-		// Column 2: Navigation shortcuts
-		col2 := ""
-		if i < len(shortcuts) {
-			col2 = shortcuts[i]
+		// Clamp col1 to exactly col1Width to guarantee shortcut column alignment.
+		col1W := lipgloss.Width(col1)
+		if col1W < col1Width {
+			col1 += bgPadStyle.Render(strings.Repeat(" ", col1Width-col1W))
 		}
 
-		// Column 3: Filter/sort hints
-		col3 := ""
-		if i < len(filterHints) {
-			col3 = filterHints[i]
+		// Assemble all columns for this row
+		columns := []string{col1}
+		widths := []int{col1Width}
+		for j, col := range shortcutCols {
+			val := ""
+			if i < len(col) {
+				val = col[i]
+			}
+			columns = append(columns, val)
+			widths = append(widths, shortcutWidths[j])
 		}
 
-		// Column 4: Contextual action shortcuts
-		col4 := ""
-		if i < len(contextual) {
-			col4 = contextual[i]
-		}
-
-		line := h.formatFourColumnLine(col1, col2, col3, col4, col1Width, col2Width, col3Width)
+		line := h.formatColumnsLine(columns, widths)
 		lines = append(lines, theme.PadToWidth(bgStyle.Render(line), h.width, theme.ColorBackground))
 	}
 
@@ -394,179 +418,190 @@ func (h *Header) InfoPaneView() string {
 	return strings.Join(lines, "\n")
 }
 
-// getShortcutRows returns navigation shortcuts (column 2, same for all views)
-func (h *Header) getShortcutRows() []string {
-	keyStyle := theme.Styles.ShortcutKey
-	descStyle := theme.Styles.ShortcutDesc
-	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
-
-	sep := bgStyle.Render("  ")
-
-	fmtKey := func(k, d string) string {
-		return keyStyle.Render(k) + descStyle.Render(":"+d)
-	}
-
-	return []string{
-		fmtKey("↑↓", "nav") + sep + fmtKey("enter", "select"),
-		fmtKey("n", "ns") + sep + fmtKey(":ctx", "context"),
-		fmtKey("ctrl+p", "palette") + sep + fmtKey("ctrl+r", "refresh"),
-		fmtKey("c", "copy") + sep + fmtKey("q", "quit"),
-		fmtKey("esc", "back") + sep + fmtKey("?", "help"),
-	}
-}
-
-// getFilterHintRows returns filter/sort hints (column 3)
-func (h *Header) getFilterHintRows() []string {
-	keyStyle := theme.Styles.ShortcutKey
-	descStyle := theme.Styles.ShortcutDesc
-	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
-
-	sep := bgStyle.Render("  ")
-
-	fmtKey := func(k, d string) string {
-		return keyStyle.Render(k) + descStyle.Render(":"+d)
-	}
-
-	return []string{
-		fmtKey("/", "filter"),
-		fmtKey("!", "invert") + sep + fmtKey("-f", "fuzzy"),
-		fmtKey("-l", "label"),
-		fmtKey("S", "sort") + sep + fmtKey("[", "prev") + sep + fmtKey("]", "next"),
-		fmtKey("ctrl+z", "errors"),
-	}
-}
-
-// getContextualRows returns view-specific action shortcuts (column 4)
-func (h *Header) getContextualRows() []string {
-	keyStyle := theme.Styles.ShortcutKey
-	descStyle := theme.Styles.ShortcutDesc
-	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
-
-	sep := bgStyle.Render("  ")
-
-	fmtKey := func(k, d string) string {
-		return keyStyle.Render(k) + descStyle.Render(":"+d)
-	}
-
+// getShortcutItems returns a flat, priority-ordered list of all keyboard shortcuts.
+// View-specific items come first (highest value), followed by universal actions,
+// core navigation, and extended navigation. When the terminal is too narrow,
+// columns are dropped from the end, so lowest-priority items disappear first.
+func (h *Header) getShortcutItems() []shortcutItem {
+	// View-specific shortcuts (highest priority)
+	var items []shortcutItem
 	switch h.currentViewType {
 	case "pods":
-		return []string{
-			fmtKey("d", "describe") + sep + fmtKey("y", "yaml"),
-			fmtKey("l", "logs") + sep + fmtKey("s", "shell"),
-			fmtKey("F", "pf") + sep + fmtKey("ctrl+d", "delete"),
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"l", "Logs"}, {"s", "Shell"},
+			{"F", "Port-Forward"}, {"ctrl+d", "Delete"},
 		}
 	case "deployments":
-		return []string{
-			fmtKey("d", "describe") + sep + fmtKey("y", "yaml"),
-			fmtKey("r", "restart") + sep + fmtKey("s", "scale"),
-			fmtKey("ctrl+d", "delete"),
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"r", "Restart"}, {"s", "Scale"},
+			{"ctrl+d", "Delete"},
 		}
 	case "services":
-		return []string{
-			fmtKey("d", "describe") + sep + fmtKey("y", "yaml"),
-			fmtKey("F", "pf") + sep + fmtKey("ctrl+d", "delete"),
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"F", "Port-Forward"}, {"ctrl+d", "Delete"},
 		}
 	case "configmaps":
-		return []string{
-			fmtKey("d", "describe") + sep + fmtKey("y", "yaml"),
-			fmtKey("ctrl+d", "delete"),
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"ctrl+d", "Delete"},
 		}
 	case "portforwards":
-		return []string{
-			fmtKey("ctrl+d", "stop"),
+		items = []shortcutItem{
+			{"ctrl+d", "Stop"},
 		}
 	case "secrets":
-		return []string{
-			fmtKey("d", "describe") + sep + fmtKey("y", "yaml"),
-			fmtKey("x", "decode") + sep + fmtKey("ctrl+d", "delete"),
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"x", "Decode"}, {"ctrl+d", "Delete"},
 		}
 	case "containers":
-		return []string{
-			fmtKey("d", "describe") + sep + fmtKey("l", "logs"),
-			fmtKey("s", "shell"),
+		items = []shortcutItem{
+			{"d", "Describe"}, {"l", "Logs"},
+			{"s", "Shell"},
 		}
 	case "helmreleases":
-		return []string{
-			fmtKey("enter", "history") + sep + fmtKey("d", "describe"),
-			fmtKey("v", "values") + sep + fmtKey("m", "manifest"),
-			fmtKey("y", "yaml") + sep + fmtKey("ctrl+d", "delete"),
+		items = []shortcutItem{
+			{"enter", "History"}, {"d", "Describe"},
+			{"v", "Values"}, {"m", "Manifest"},
+			{"y", "YAML"}, {"ctrl+d", "Delete"},
 		}
 	case "helmhistory":
-		return []string{
-			fmtKey("enter", "detail") + sep + fmtKey("d", "describe"),
-			fmtKey("v", "values") + sep + fmtKey("m", "manifest"),
-			fmtKey("y", "yaml"),
+		items = []shortcutItem{
+			{"enter", "Detail"}, {"d", "Describe"},
+			{"v", "Values"}, {"m", "Manifest"},
+			{"y", "YAML"},
 		}
 	case "xray":
-		return []string{
-			fmtKey("enter", "expand") + sep + fmtKey("d", "describe"),
-			fmtKey("y", "yaml") + sep + fmtKey("l", "logs"),
-			fmtKey("ctrl+d", "delete"),
+		items = []shortcutItem{
+			{"enter", "Expand"}, {"d", "Describe"},
+			{"y", "YAML"}, {"l", "Logs"},
+			{"ctrl+d", "Delete"},
 		}
 	default:
-		return []string{
-			fmtKey("d", "describe") + sep + fmtKey("y", "yaml"),
-			fmtKey("X", "xray") + sep + fmtKey("ctrl+d", "delete"),
-		}
-	}
-}
-
-// formatFourColumnLine formats a line with four columns
-func (h *Header) formatFourColumnLine(col1, col2, col3, col4 string, col1Width, col2Width, col3Width int) string {
-	bgPadStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
-
-	// Pad col1 to its width
-	col1Len := lipgloss.Width(col1)
-	pad1 := col1Width - col1Len
-	if pad1 < 1 {
-		pad1 = 1
-	}
-
-	// Pad col2 to its width
-	col2Len := lipgloss.Width(col2)
-	pad2 := col2Width - col2Len
-	if pad2 < 1 {
-		pad2 = 1
-	}
-
-	// Pad col3 to its width
-	col3Len := lipgloss.Width(col3)
-	pad3 := col3Width - col3Len
-	if pad3 < 1 {
-		pad3 = 1
-	}
-
-	// Use styled padding to maintain background
-	padding1 := bgPadStyle.Render(strings.Repeat(" ", pad1))
-	padding2 := bgPadStyle.Render(strings.Repeat(" ", pad2))
-	padding3 := bgPadStyle.Render(strings.Repeat(" ", pad3))
-
-	return col1 + padding1 + col2 + padding2 + col3 + padding3 + col4
-}
-
-// formatTwoColumnLine formats a line with left and right content
-func (h *Header) formatTwoColumnLine(left, right string, leftWidth int) string {
-	bgPadStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
-	leftLen := lipgloss.Width(left)
-	rightLen := lipgloss.Width(right)
-
-	// Pad left to column width
-	padding := leftWidth - leftLen
-	if padding < 2 {
-		padding = 2
-	}
-
-	// Ensure right fits
-	totalLen := leftLen + padding + rightLen
-	if totalLen > h.width {
-		// Truncate padding
-		padding = h.width - leftLen - rightLen
-		if padding < 1 {
-			padding = 1
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"X", "Xray"}, {"ctrl+d", "Delete"},
 		}
 	}
 
-	return left + bgPadStyle.Render(strings.Repeat(" ", padding)) + right
+	// Universal actions
+	items = append(items, []shortcutItem{
+		{"e", "Edit"}, {"c", "Copy"},
+	}...)
+
+	// Core navigation
+	items = append(items, []shortcutItem{
+		{"↑↓", "Navigate"}, {"enter", "Select"},
+		{"/", "Filter"}, {"?", "Help"},
+		{"n", "Namespace"}, {":ctx", "Context"},
+		{"ctrl+r", "Refresh"}, {"q", "Quit"},
+		{"esc", "Back"},
+	}...)
+
+	// Extended navigation (power user, lowest priority)
+	items = append(items, []shortcutItem{
+		{"tab", "Next/Prev"}, {"←→", "Scroll"},
+		{"pgup/dn", "Page"}, {"g", "Top"}, {"G", "Bottom"},
+		{"ctrl+p", "Palette"}, {"!", "Invert"},
+		{"-f", "Fuzzy"}, {"-l", "Label"},
+		{"S", "Sort"}, {"[/]", "Prev/Next"},
+		{"ctrl+z", "Errors"},
+	}...)
+
+	return items
+}
+
+// layoutShortcutColumns arranges shortcut items in k9s-style vertical-flow columns.
+// Items fill top-to-bottom (up to shortcutMaxRows per column), then wrap to the next column.
+// Each column is auto-sized to fit its widest key and description.
+// Columns are added left-to-right until the available width is exhausted.
+func (h *Header) layoutShortcutColumns(items []shortcutItem, availableWidth int) ([][]string, []int) {
+	keyStyle := theme.Styles.ShortcutKey
+	descStyle := theme.Styles.ShortcutDesc
+	bgPadStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+
+	colGap := 4
+	innerPad := 2
+
+	// First pass: compute a single uniform column width across ALL items
+	globalMaxKeyW := 0
+	globalMaxDescW := 0
+	for _, item := range items {
+		kw := lipgloss.Width("<" + item.key + ">")
+		if kw > globalMaxKeyW {
+			globalMaxKeyW = kw
+		}
+		dw := lipgloss.Width(item.desc)
+		if dw > globalMaxDescW {
+			globalMaxDescW = dw
+		}
+	}
+	uniformColWidth := globalMaxKeyW + innerPad + globalMaxDescW + colGap
+
+	// How many shortcut columns fit?
+	maxCols := availableWidth / uniformColWidth
+	if maxCols < 0 {
+		maxCols = 0
+	}
+
+	// Second pass: render columns using the uniform width
+	var columns [][]string
+	var widths []int
+	for start := 0; start < len(items) && len(columns) < maxCols; start += shortcutMaxRows {
+		end := start + shortcutMaxRows
+		if end > len(items) {
+			end = len(items)
+		}
+		chunk := items[start:end]
+
+		var col []string
+		for _, item := range chunk {
+			renderedKey := keyStyle.Render("<" + item.key + ">")
+			keyW := lipgloss.Width(renderedKey)
+			keyPad := globalMaxKeyW - keyW + innerPad
+
+			descW := lipgloss.Width(item.desc)
+			descPad := globalMaxDescW - descW
+
+			line := renderedKey +
+				bgPadStyle.Render(strings.Repeat(" ", keyPad)) +
+				descStyle.Render(item.desc)
+			if descPad > 0 {
+				line += bgPadStyle.Render(strings.Repeat(" ", descPad))
+			}
+			col = append(col, line)
+		}
+		for len(col) < shortcutMaxRows {
+			col = append(col, "")
+		}
+
+		columns = append(columns, col)
+		widths = append(widths, uniformColWidth)
+	}
+
+	return columns, widths
+}
+
+// formatColumnsLine formats a line with a variable number of columns
+func (h *Header) formatColumnsLine(columns []string, widths []int) string {
+	bgPadStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+	var result strings.Builder
+	for i, col := range columns {
+		result.WriteString(col)
+		if i < len(columns)-1 && i < len(widths) {
+			pad := widths[i] - lipgloss.Width(col)
+			if pad < 0 {
+				pad = 0
+			}
+			if pad > 0 {
+				result.WriteString(bgPadStyle.Render(strings.Repeat(" ", pad)))
+			}
+		}
+	}
+	return result.String()
 }
 
 // renderCategoryWithResources renders category tabs and resource tabs on same row
@@ -620,37 +655,6 @@ func (h *Header) renderCategoryWithResources() string {
 	return result.String()
 }
 
-// formatInfoLine formats info items in columns
-func (h *Header) formatInfoLine(parts []string) string {
-	if len(parts) == 0 {
-		return ""
-	}
-
-	bgPadStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
-
-	// Calculate column width - divide width into equal columns
-	colWidth := (h.width - 4) / len(parts) // -4 for some padding
-	if colWidth < 20 {
-		colWidth = 20
-	}
-
-	var result strings.Builder
-	result.WriteString(bgPadStyle.Render("  ")) // Left padding
-
-	for i, part := range parts {
-		partWidth := lipgloss.Width(part)
-		result.WriteString(part)
-		if i < len(parts)-1 {
-			// Pad to column width
-			padding := colWidth - partWidth
-			if padding > 0 {
-				result.WriteString(bgPadStyle.Render(strings.Repeat(" ", padding)))
-			}
-		}
-	}
-
-	return result.String()
-}
 
 // renderCategoryTabs renders the category tab row
 func (h *Header) renderCategoryTabs() string {
