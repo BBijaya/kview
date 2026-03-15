@@ -694,7 +694,7 @@ func kindToAPIResource(kind string) string {
 
 // switchToGenericResource configures the generic view for a discovered resource and switches to it.
 func (a *App) switchToGenericResource(info *k8s.APIResourceInfo) tea.Cmd {
-	a.genericView.SetResource(info.Resource, info.Kind, info.Kind)
+	a.genericView.SetResource(info.Resource, info.Kind, info.Kind, info.Namespaced)
 	a.genericResourceKind = info.Resource
 	a.ensureGenericInformer(info)
 
