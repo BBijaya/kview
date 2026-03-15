@@ -105,43 +105,94 @@ func (d *Dialog) Update(msg tea.Msg) (*Dialog, tea.Cmd) {
 	return d, nil
 }
 
-// View renders the dialog
+// View renders the dialog with hand-drawn borders matching the port forward picker style.
 func (d *Dialog) View() string {
 	if !d.visible {
 		return ""
 	}
 
-	var b strings.Builder
+	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+	textStyle := lipgloss.NewStyle().Foreground(theme.ColorText).Background(theme.ColorBackground)
+	mutedStyle := lipgloss.NewStyle().Foreground(theme.ColorMuted).Background(theme.ColorBackground)
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Background(theme.ColorBackground)
+	borderChar := borderStyle.Render
 
-	// Title
-	titleStyle := theme.Styles.DialogTitle
-	switch d.dialogType {
-	case DialogError:
-		titleStyle = titleStyle.Foreground(theme.ColorError)
-	case DialogInfo:
-		titleStyle = titleStyle.Foreground(theme.ColorInfo)
+	// Title color varies by dialog type
+	titleColor := theme.ColorHighlight
+	if d.dialogType == DialogError {
+		titleColor = theme.ColorError
 	}
-	b.WriteString(titleStyle.Render(d.title))
-	b.WriteString("\n\n")
 
-	// Message
-	messageStyle := theme.Styles.Base.Width(d.width - 4)
-	b.WriteString(messageStyle.Render(d.message))
-	b.WriteString("\n\n")
+	// Compute overlay width (similar to port forward picker)
+	overlayWidth := d.screenWidth * 2 / 5
+	if overlayWidth < 30 {
+		overlayWidth = 30
+	}
+	if overlayWidth > 50 {
+		overlayWidth = 50
+	}
+	if d.screenWidth > 0 && overlayWidth > d.screenWidth-4 {
+		overlayWidth = d.screenWidth - 4
+	}
+	innerWidth := overlayWidth - 2 // subtract border columns
 
-	// Buttons
+	// Build top border with centered title: ╭──── Title ────╮
+	title := lipgloss.NewStyle().
+		Foreground(titleColor).
+		Background(theme.ColorBackground).
+		Bold(true).
+		Render(d.title)
+	titleWidth := lipgloss.Width(d.title)
+	dashSpace := innerWidth - titleWidth - 2 // 2 for spaces around title
+	if dashSpace < 2 {
+		dashSpace = 2
+	}
+	leftDashes := dashSpace / 2
+	rightDashes := dashSpace - leftDashes
+	topBorder := borderChar("╭") +
+		borderChar(strings.Repeat("─", leftDashes)) +
+		borderChar(" ") + title + borderChar(" ") +
+		borderChar(strings.Repeat("─", rightDashes)) +
+		borderChar("╮")
+
+	// padContent normalizes each content line to exact inner width
+	padContent := func(line string) string {
+		w := lipgloss.Width(line)
+		pad := innerWidth - 2 // inner padding (1 each side)
+		if w < pad {
+			line += bgStyle.Render(strings.Repeat(" ", pad-w))
+		} else if w > pad {
+			line = ansiTruncateClean(line, pad)
+		}
+		return borderChar("│") + bgStyle.Render(" ") + line + bgStyle.Render(" ") + borderChar("│")
+	}
+	emptyLine := borderChar("│") + bgStyle.Render(strings.Repeat(" ", innerWidth)) + borderChar("│")
+
+	var lines []string
+	lines = append(lines, topBorder)
+	lines = append(lines, emptyLine)
+
+	// Word-wrap message to fit content area
+	maxMsgWidth := innerWidth - 2
+	wrapped := lipgloss.NewStyle().Width(maxMsgWidth).Render(d.message)
+	for _, msgLine := range strings.Split(wrapped, "\n") {
+		lines = append(lines, padContent(textStyle.Render(msgLine)))
+	}
+
+	// Blank separator + footer hints
+	lines = append(lines, emptyLine)
 	switch d.dialogType {
 	case DialogConfirm:
-		yesBtn := theme.Styles.TabActive.Render(" Yes (y) ")
-		noBtn := theme.Styles.Tab.Render(" No (n/esc) ")
-		b.WriteString(yesBtn + "  " + noBtn)
+		lines = append(lines, padContent(mutedStyle.Render("enter:confirm  esc:cancel")))
 	case DialogInfo, DialogError:
-		okBtn := theme.Styles.TabActive.Render(" OK (enter/esc) ")
-		b.WriteString(okBtn)
+		lines = append(lines, padContent(mutedStyle.Render("enter/esc:dismiss")))
 	}
 
-	// Wrap in dialog style
-	return theme.Styles.Dialog.Width(d.width).Render(b.String())
+	// Bottom border
+	bottomBorder := borderChar("╰") + borderChar(strings.Repeat("─", innerWidth)) + borderChar("╯")
+	lines = append(lines, bottomBorder)
+
+	return strings.Join(lines, "\n")
 }
 
 // ViewCentered renders the dialog centered on the screen
