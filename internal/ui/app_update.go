@@ -78,6 +78,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, DefaultKeyMap().Quit):
 			a.quitting = true
+			a.saveSession()
 			a.pfManager.StopAll()
 			a.stopAllInformers()
 			if a.store != nil {
@@ -557,6 +558,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Stop all port forwards on context switch
 		a.pfManager.StopAll()
 		a.pfManager.SetClient(a.client.GetRestConfig(), a.client.GetClientset())
+		// Restore saved session for the new context
+		a.restoreSession()
+		a.header.SetViewName(ViewName(a.activeView))
+		if a.namespace == "" {
+			a.header.SetNamespace("all")
+		} else {
+			a.header.SetNamespace(a.namespace)
+		}
 		// Restart all informers with new client
 		a.stopAllInformers()
 		a.initInformers()

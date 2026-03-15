@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -315,6 +316,8 @@ func (a *App) loadNamespaces() tea.Cmd {
 
 // switchContext switches to a new Kubernetes context
 func (a *App) switchContext(contextName string) tea.Cmd {
+	// Save current context's session before switching
+	a.saveSession()
 	return func() tea.Msg {
 		newClient, err := k8s.NewClientForContext(contextName)
 		if err != nil {
@@ -741,4 +744,143 @@ func (a *App) editResource(kind, namespace, name string) tea.Cmd {
 		}
 		return EditExitMsg{Applied: editCmd.Applied()}
 	})
+}
+
+// sessionData represents the saved session state for a context.
+type sessionData struct {
+	View      string                    `json:"view"`
+	Namespace string                    `json:"namespace"`
+	Resource  string                    `json:"resource,omitempty"`
+	Sort      map[string]sessionSort    `json:"sort,omitempty"`
+}
+
+type sessionSort struct {
+	Col int  `json:"col"`
+	Asc bool `json:"asc"`
+}
+
+// saveSession persists the current view, namespace, and sort state to the DB.
+func (a *App) saveSession() {
+	if a.store == nil || a.context == "" {
+		return
+	}
+
+	// Determine which view to save — skip drill-down views
+	viewToSave := a.activeView
+	if isDrillDownView(viewToSave) {
+		viewToSave = a.previousView
+		if isDrillDownView(viewToSave) {
+			viewToSave = ViewPods
+		}
+	}
+
+	viewStr := a.getViewTypeString()
+	if isDrillDownView(a.activeView) {
+		// Temporarily swap to get the string for the parent view
+		origView := a.activeView
+		a.activeView = viewToSave
+		viewStr = a.getViewTypeString()
+		a.activeView = origView
+	}
+
+	session := sessionData{
+		View:      viewStr,
+		Namespace: a.namespace,
+		Sort:      make(map[string]sessionSort),
+	}
+
+	// Save generic resource name
+	if viewToSave == ViewGenericResource && a.genericView != nil {
+		session.Resource = a.genericView.ResourceKind()
+	}
+
+	// Collect sort state from all views with tables
+	for vt, view := range a.views {
+		if ta, ok := view.(views.TableAccess); ok {
+			col, asc := ta.GetTable().SortedColumn()
+			if col >= 0 {
+				// Get the string key for this view type
+				origView := a.activeView
+				a.activeView = vt
+				key := a.getViewTypeString()
+				a.activeView = origView
+				session.Sort[key] = sessionSort{Col: col, Asc: asc}
+			}
+		}
+	}
+
+	data, err := json.Marshal(session)
+	if err != nil {
+		return
+	}
+	_ = a.store.SetSetting(context.Background(), "session:"+a.context, string(data))
+}
+
+// restoreSession loads saved session state from the DB for the current context.
+func (a *App) restoreSession() {
+	if a.store == nil || a.context == "" {
+		return
+	}
+
+	val, err := a.store.GetSetting(context.Background(), "session:"+a.context)
+	if err != nil || val == "" {
+		return
+	}
+
+	var session sessionData
+	if err := json.Unmarshal([]byte(val), &session); err != nil {
+		return
+	}
+
+	// Restore namespace
+	if session.Namespace != "" {
+		a.namespace = session.Namespace
+		a.propagateNamespace(session.Namespace)
+		a.header.SetNamespace(session.Namespace)
+	}
+
+	// Restore view
+	if session.View != "" {
+		vt, known := viewTypeFromString(session.View)
+		if known && !isDrillDownView(vt) {
+			a.activeView = vt
+			a.previousView = vt
+			a.header.SetViewName(ViewName(vt))
+		} else if !known && session.Resource != "" {
+			// Possibly a generic/CRD resource — try API registry
+			if reg := a.client.APIResources(); reg != nil {
+				if info, found := reg.Lookup(session.Resource); found {
+					a.genericView.SetResource(info.Resource, info.Kind, info.Kind, info.Namespaced)
+					a.genericResourceKind = info.Resource
+					a.activeView = ViewGenericResource
+					a.previousView = ViewGenericResource
+					a.header.SetViewName(info.Kind)
+				}
+			}
+		} else if !known && session.View != "" {
+			// Try the view string as a resource name directly
+			if reg := a.client.APIResources(); reg != nil {
+				if info, found := reg.Lookup(session.View); found {
+					a.genericView.SetResource(info.Resource, info.Kind, info.Kind, info.Namespaced)
+					a.genericResourceKind = info.Resource
+					a.activeView = ViewGenericResource
+					a.previousView = ViewGenericResource
+					a.header.SetViewName(info.Kind)
+				}
+			}
+		}
+	}
+
+	// Restore sort state
+	for viewKey, sort := range session.Sort {
+		vt, known := viewTypeFromString(viewKey)
+		if !known {
+			continue
+		}
+		if view, ok := a.views[vt]; ok {
+			if ta, ok := view.(views.TableAccess); ok {
+				ta.GetTable().SetSort(sort.Col, sort.Asc)
+			}
+		}
+	}
 }

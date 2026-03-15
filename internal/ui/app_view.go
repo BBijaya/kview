@@ -245,9 +245,90 @@ func (a *App) getViewTypeString() string {
 		return "portforwards"
 	case ViewXray:
 		return "xray"
+	case ViewAPIResources:
+		return "api-resources"
+	case ViewTimeline:
+		return "timeline"
+	case ViewDiagnosis:
+		return "diagnosis"
 	default:
 		return "default"
 	}
+}
+
+// viewTypeFromString converts a string identifier to a ViewType.
+// Returns the ViewType and true if recognized, or ViewPods and false if not.
+func viewTypeFromString(s string) (ViewType, bool) {
+	switch s {
+	case "pods":
+		return ViewPods, true
+	case "deployments":
+		return ViewDeployments, true
+	case "services":
+		return ViewServices, true
+	case "endpoints":
+		return ViewEndpoints, true
+	case "endpointslices":
+		return ViewEndpointSlices, true
+	case "configmaps":
+		return ViewConfigMaps, true
+	case "secrets":
+		return ViewSecrets, true
+	case "ingresses":
+		return ViewIngresses, true
+	case "pvcs":
+		return ViewPVCs, true
+	case "statefulsets":
+		return ViewStatefulSets, true
+	case "nodes":
+		return ViewNodes, true
+	case "events":
+		return ViewEvents, true
+	case "replicasets":
+		return ViewReplicaSets, true
+	case "daemonsets":
+		return ViewDaemonSets, true
+	case "jobs":
+		return ViewJobs, true
+	case "cronjobs":
+		return ViewCronJobs, true
+	case "horizontalpodautoscalers":
+		return ViewHPAs, true
+	case "persistentvolumes":
+		return ViewPVs, true
+	case "rolebindings":
+		return ViewRoleBindings, true
+	case "health":
+		return ViewHealth, true
+	case "pulse":
+		return ViewPulse, true
+	case "helmreleases":
+		return ViewHelmReleases, true
+	case "portforwards":
+		return ViewPortForwards, true
+	case "xray":
+		return ViewXray, true
+	case "api-resources":
+		return ViewAPIResources, true
+	case "timeline":
+		return ViewTimeline, true
+	case "diagnosis":
+		return ViewDiagnosis, true
+	default:
+		return ViewPods, false
+	}
+}
+
+// isDrillDownView returns true for views that require a selected resource
+// and should not be restored on session restore.
+func isDrillDownView(v ViewType) bool {
+	switch v {
+	case ViewDescribe, ViewLogs, ViewYAML, ViewContainers,
+		ViewHelmHistory, ViewHelmValues, ViewHelmManifest,
+		ViewSecretDecode, ViewHelp, ViewNamespaceSelect, ViewContextSelect:
+		return true
+	}
+	return false
 }
 
 // getViewKind returns the singular Kind name for the current active view.

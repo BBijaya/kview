@@ -298,11 +298,18 @@ func NewApp(client k8s.Client) *App {
 	// Initialize informers
 	app.initInformers()
 
+	// Restore session from DB (view, namespace, sort state)
+	app.restoreSession()
+
 	// Set header info
 	app.header.SetContext(contextName)
-	app.header.SetNamespace("all")
+	if app.namespace == "" {
+		app.header.SetNamespace("all")
+	} else {
+		app.header.SetNamespace(app.namespace)
+	}
 	app.header.SetServerVersion(client.ServerVersion())
-	app.header.SetViewName("Pods")
+	app.header.SetViewName(ViewName(app.activeView))
 
 	// Set user and cluster info for k9s-style header
 	app.header.SetUser(k8s.GetCurrentUser())
