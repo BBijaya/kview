@@ -635,6 +635,14 @@ func (t *Table) ClearSort() {
 	t.cacheGen++
 }
 
+// SetSort sets the sort column and direction.
+func (t *Table) SetSort(col int, asc bool) {
+	t.sortCol = col
+	t.sortAsc = asc
+	t.applyFilter()
+	t.cacheGen++
+}
+
 // SortedColumn returns the current sort column and direction.
 // col is -1 when unsorted.
 func (t *Table) SortedColumn() (col int, asc bool) {

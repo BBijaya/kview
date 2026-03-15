@@ -20,6 +20,7 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 	switch cmd {
 	case "q", "quit":
 		a.quitting = true
+		a.saveSession()
 		a.pfManager.StopAll()
 		a.stopAllInformers()
 		if a.store != nil {

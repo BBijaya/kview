@@ -20,6 +20,10 @@ type Store interface {
 	RecordChange(ctx context.Context, change *ChangeRecord) error
 	GetChanges(ctx context.Context, filter ChangeFilter) ([]ChangeRecord, error)
 
+	// Settings
+	GetSetting(ctx context.Context, key string) (string, error)
+	SetSetting(ctx context.Context, key, value string) error
+
 	// Lifecycle
 	Close() error
 }
