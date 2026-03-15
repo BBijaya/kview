@@ -330,13 +330,18 @@ func (a *App) SetStartupWarning(msg string) {
 	}
 }
 
-// NewAppWithError creates a new application instance with a connection error
+// NewAppWithError creates a new application instance with a connection error.
+// Instead of showing a dead-end error screen, it lands the user on the context
+// picker so they can switch to a reachable context.
 func NewAppWithError(client k8s.Client, errorMsg string) *App {
 	app := NewApp(client)
 	app.connectionError = errorMsg
 	app.isDisconnected = true
+	app.activeView = ViewContextSelect
+	app.previousView = ViewPods // so successful context switch goes to Pods
 	app.header.SetContext("disconnected")
 	app.header.SetServerVersion("N/A")
+	app.header.SetViewName(ViewName(ViewContextSelect))
 	return app
 }
 
@@ -345,6 +350,17 @@ func (a *App) Init() tea.Cmd {
 	var cmds []tea.Cmd
 
 	a.loading = true
+
+	// When disconnected, show context picker with error toast — skip cluster-dependent work
+	if a.isDisconnected {
+		a.loading = false
+		if view, ok := a.views[a.activeView]; ok {
+			cmds = append(cmds, view.Init())
+		}
+		cmds = append(cmds, a.tickCmd())
+		cmds = append(cmds, a.toasts.PushError("Connection", a.connectionError))
+		return tea.Batch(cmds...)
+	}
 
 	// For informer-backed views, start the informer and poll immediately
 	if a.isInformerView(a.activeView) {

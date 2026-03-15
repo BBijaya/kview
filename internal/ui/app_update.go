@@ -552,6 +552,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.setStatus(msg.Message, msg.IsError)
 
 	case ContextSwitchedMsg:
+		wasDisconnected := a.isDisconnected
+		a.isDisconnected = false
+		a.connectionError = ""
 		a.invalidateHeader()
 		a.setStatus("Switched to context: "+msg.Context, false)
 		cmds = append(cmds, a.toasts.PushInfo("Context", "Switched to "+msg.Context))
@@ -572,6 +575,21 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.ensureInformer(a.activeView)
 		a.loading = true
 		cmds = append(cmds, a.dataPollImmediateCmd())
+		if wasDisconnected {
+			// Start ticks that were skipped when app started disconnected
+			cmds = append(cmds, a.fetchMetrics())
+			cmds = append(cmds, a.podMetricsTickCmd())
+			cmds = append(cmds, a.nodeMetricsTickCmd())
+			cmds = append(cmds, a.dataPollTickCmd())
+		}
+
+	case ContextSwitchFailedMsg:
+		// Stay on context picker so user can try another context
+		a.activeView = ViewContextSelect
+		a.loading = false
+		errMsg := fmt.Sprintf("Failed to connect to %s: %s", msg.Context, msg.Err.Error())
+		a.setStatus(errMsg, true)
+		cmds = append(cmds, a.toasts.PushError("Context", errMsg))
 
 	case ErrorMsg:
 		a.setStatus(msg.Err.Error(), true)
@@ -904,7 +922,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, tea.Batch(nsCmds...)
 
 	case views.ContextSelectedMsg:
-		a.activeView = a.previousView
+		// If disconnected, go to Pods after successful context switch
+		// (previousView would be ViewContextSelect which we don't want to return to)
+		if a.isDisconnected {
+			a.activeView = ViewPods
+		} else {
+			a.activeView = a.previousView
+		}
 		return a, a.switchContext(msg.Context)
 
 	case components.ToastExpiredMsg:

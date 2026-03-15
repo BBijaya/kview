@@ -321,7 +321,7 @@ func (a *App) switchContext(contextName string) tea.Cmd {
 	return func() tea.Msg {
 		newClient, err := k8s.NewClientForContext(contextName)
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to switch context: %w", err)}
+			return ContextSwitchFailedMsg{Context: contextName, Err: err}
 		}
 
 		// Update client reference

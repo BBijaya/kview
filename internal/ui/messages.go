@@ -20,6 +20,13 @@ type ErrorMsg struct {
 	Err error
 }
 
+// ContextSwitchFailedMsg is sent when switching to a context fails.
+// Unlike ErrorMsg, this keeps the user on the context picker so they can try another.
+type ContextSwitchFailedMsg struct {
+	Context string
+	Err     error
+}
+
 // StatusMsg represents a status message to display
 type StatusMsg struct {
 	Message string
