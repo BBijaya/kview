@@ -140,18 +140,6 @@ func (a *App) View() tea.View {
 		content = overlay
 	}
 
-	// Overlay namespace picker if visible
-	if a.namespacePicker.IsVisible() {
-		a.namespacePicker.SetSize(a.width, a.height)
-		content = a.namespacePicker.View()
-	}
-
-	// Overlay API resource picker if visible
-	if a.apiResourcePicker.IsVisible() {
-		a.apiResourcePicker.SetSize(a.width, a.height)
-		content = a.apiResourcePicker.View()
-	}
-
 	// Overlay port forward picker if visible (inline, on top of current view)
 	if a.pfPicker.IsVisible() {
 		a.pfPicker.SetSize(a.width, a.height)

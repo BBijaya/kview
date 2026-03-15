@@ -39,20 +39,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, cmd
 		}
 
-		// Handle namespace picker
-		if a.namespacePicker.IsVisible() {
-			var cmd tea.Cmd
-			a.namespacePicker, cmd = a.namespacePicker.Update(msg)
-			return a, cmd
-		}
-
-		// Handle API resource picker
-		if a.apiResourcePicker.IsVisible() {
-			var cmd tea.Cmd
-			a.apiResourcePicker, cmd = a.apiResourcePicker.Update(msg)
-			return a, cmd
-		}
-
 		// Handle port forward picker
 		if a.pfPicker.IsVisible() {
 			var cmd tea.Cmd
@@ -708,48 +694,18 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Palette was closed
 		return a, nil
 
-	case components.PickerSelectedMsg:
-		switch msg.PickerID {
-		case "namespace":
-			a.namespace = msg.Item.ID
-			a.propagateNamespace(msg.Item.ID)
-			nsLabel := msg.Item.Label
-			if msg.Item.ID == "" {
-				a.header.SetNamespace("all")
-				nsLabel = "all"
-			} else {
-				a.header.SetNamespace(msg.Item.ID)
-			}
-			a.invalidateHeader()
-			a.setStatus("Switched to namespace: "+nsLabel, false)
-			cmds = append(cmds, a.toasts.PushInfo("Namespace", "Switched to "+nsLabel))
-			a.loading = true
-			a.setInformersNamespace(msg.Item.ID)
-			cmds = append(cmds, a.dataPollImmediateCmd())
-		case "api-resource":
-			if reg := a.client.APIResources(); reg != nil {
-				if info, found := reg.Lookup(msg.Item.ID); found {
-					return a, a.switchToGenericResource(info)
-				}
+	case views.SwitchToGenericResourceMsg:
+		if reg := a.client.APIResources(); reg != nil {
+			if info, found := reg.Lookup(msg.Resource); found {
+				return a, a.switchToGenericResource(info)
 			}
 		}
-		return a, tea.Batch(cmds...)
-
-	case components.PickerCancelledMsg:
-		// Picker was cancelled
+		a.setStatus("Resource type not found: "+msg.Resource, true)
 		return a, nil
 
 	case NamespacesLoadedMsg:
 		if msg.Err != nil {
 			a.setStatus("Failed to load namespaces: "+msg.Err.Error(), true)
-		} else {
-			items := []components.PickerItem{
-				{ID: "", Label: "all", Desc: "All namespaces"},
-			}
-			for _, ns := range msg.Namespaces {
-				items = append(items, components.PickerItem{ID: ns, Label: ns})
-			}
-			a.namespacePicker.SetItems(items)
 		}
 		return a, nil
 
