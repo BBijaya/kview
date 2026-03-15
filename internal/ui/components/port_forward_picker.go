@@ -66,6 +66,7 @@ type PortForwardPicker struct {
 	addressInput       textinput.Model
 	focusedField       int  // 0=container port, 1=local port, 2=address
 	localPortManual    bool // true once user manually edits local port
+	errorMsg           string // validation error shown below fields
 }
 
 // newStyledInput creates a textinput with proper background styling to prevent color leak
@@ -97,65 +98,34 @@ func NewPortForwardPicker() *PortForwardPicker {
 
 // Show shows the picker with the given pod and container info
 func (p *PortForwardPicker) Show(namespace, pod string, containers []k8s.ContainerInfo) {
-	p.visible = true
-	p.namespace = namespace
-	p.resourceType = "pods"
-	p.resourceName = pod
-
-	// Collect all defined container ports
-	p.ports = nil
+	var ports []portEntry
 	for _, c := range containers {
 		for _, port := range c.Ports {
-			p.ports = append(p.ports, portEntry{
-				Container: c.Name,
-				Port:      port.ContainerPort,
-				Protocol:  port.Protocol,
-				Name:      port.Name,
-			})
+			ports = append(ports, portEntry{c.Name, port.ContainerPort, port.Protocol, port.Name})
 		}
 	}
-
-	// Set defaults based on available ports
-	p.addressInput.SetValue("localhost")
-
-	if len(p.ports) > 0 {
-		portStr := fmt.Sprintf("%d", p.ports[0].Port)
-		p.containerPortInput.SetValue(portStr)
-		p.localPortInput.SetValue(portStr)
-	} else {
-		p.containerPortInput.SetValue("")
-		p.localPortInput.SetValue("")
-	}
-
-	// Focus the first field
-	p.focusedField = 0
-	p.localPortManual = false
-	p.containerPortInput.Focus()
-	p.localPortInput.Blur()
-	p.addressInput.Blur()
+	p.show(namespace, "pods", pod, ports)
 }
 
 // ShowForService shows the picker for a service with its ports
 func (p *PortForwardPicker) ShowForService(namespace, svcName string, servicePorts []k8s.ServicePort) {
+	var ports []portEntry
+	for _, sp := range servicePorts {
+		ports = append(ports, portEntry{svcName, sp.Port, sp.Protocol, sp.Name})
+	}
+	p.show(namespace, "services", svcName, ports)
+}
+
+// show is the shared setup for both pod and service port forwarding
+func (p *PortForwardPicker) show(namespace, resourceType, resourceName string, ports []portEntry) {
 	p.visible = true
 	p.namespace = namespace
-	p.resourceType = "services"
-	p.resourceName = svcName
+	p.resourceType = resourceType
+	p.resourceName = resourceName
+	p.ports = ports
+	p.errorMsg = ""
 
-	// Collect service ports as port entries
-	p.ports = nil
-	for _, sp := range servicePorts {
-		p.ports = append(p.ports, portEntry{
-			Container: svcName,
-			Port:      sp.Port,
-			Protocol:  sp.Protocol,
-			Name:      sp.Name,
-		})
-	}
-
-	// Set defaults based on available ports
 	p.addressInput.SetValue("localhost")
-
 	if len(p.ports) > 0 {
 		portStr := fmt.Sprintf("%d", p.ports[0].Port)
 		p.containerPortInput.SetValue(portStr)
@@ -165,7 +135,6 @@ func (p *PortForwardPicker) ShowForService(namespace, svcName string, servicePor
 		p.localPortInput.SetValue("")
 	}
 
-	// Focus the first field
 	p.focusedField = 0
 	p.localPortManual = false
 	p.containerPortInput.Focus()
@@ -220,6 +189,7 @@ func (p *PortForwardPicker) Update(msg tea.Msg) (*PortForwardPicker, tea.Cmd) {
 		case "enter":
 			containerPort, err := strconv.Atoi(p.containerPortInput.Value())
 			if err != nil || containerPort < 1 || containerPort > 65535 {
+				p.errorMsg = "Container port must be 1-65535"
 				return p, nil
 			}
 			localPortStr := p.localPortInput.Value()
@@ -228,6 +198,11 @@ func (p *PortForwardPicker) Update(msg tea.Msg) (*PortForwardPicker, tea.Cmd) {
 			}
 			localPort, err := strconv.Atoi(localPortStr)
 			if err != nil || localPort < 0 || localPort > 65535 {
+				p.errorMsg = "Local port must be 0-65535"
+				return p, nil
+			}
+			if localPort > 0 && localPort < 1024 {
+				p.errorMsg = fmt.Sprintf("Port %d requires root (use 1024+ or 0=auto)", localPort)
 				return p, nil
 			}
 			address := p.addressInput.Value()
@@ -249,6 +224,7 @@ func (p *PortForwardPicker) Update(msg tea.Msg) (*PortForwardPicker, tea.Cmd) {
 			}
 
 		default:
+			p.errorMsg = ""
 			var cmd tea.Cmd
 			switch p.focusedField {
 			case 0:
@@ -293,6 +269,29 @@ func (p *PortForwardPicker) containerForPort(port int32) string {
 		}
 	}
 	return ""
+}
+
+func (p *PortForwardPicker) containersForPort(port int32) []string {
+	var result []string
+	for _, entry := range p.ports {
+		if entry.Port == port {
+			result = append(result, entry.Container)
+		}
+	}
+	return result
+}
+
+func (p *PortForwardPicker) hasMultipleContainers() bool {
+	if len(p.ports) < 2 {
+		return false
+	}
+	first := p.ports[0].Container
+	for _, entry := range p.ports[1:] {
+		if entry.Container != first {
+			return true
+		}
+	}
+	return false
 }
 
 // renderBox builds the styled overlay box with "Port Forward" centered in the top border.
@@ -378,11 +377,15 @@ func (p *PortForwardPicker) renderBox() string {
 	lines = append(lines, padContent(mutedStyle.Render(nsResource)))
 
 	// Available ports (vertical, one per line)
+	multiContainer := p.hasMultipleContainers()
 	if len(p.ports) > 0 {
 		for _, entry := range p.ports {
 			hint := fmt.Sprintf("  %d/%s", entry.Port, entry.Protocol)
 			if entry.Name != "" {
 				hint += " (" + entry.Name + ")"
+			}
+			if multiContainer {
+				hint += " [" + entry.Container + "]"
 			}
 			lines = append(lines, padContent(mutedStyle.Render(hint)))
 		}
@@ -397,14 +400,19 @@ func (p *PortForwardPicker) renderBox() string {
 		portLabel = "Service Port:  "
 	}
 
+	errorStyle := lipgloss.NewStyle().
+		Foreground(theme.ColorError).
+		Background(theme.ColorBackground)
+
 	type field struct {
-		label string
-		view  string
+		label  string
+		view   string
+		suffix string
 	}
 	fields := []field{
-		{portLabel, p.containerPortInput.View()},
-		{"Local Port:    ", p.localPortInput.View()},
-		{"Address:       ", p.addressInput.View()},
+		{portLabel, p.containerPortInput.View(), ""},
+		{"Local Port:    ", p.localPortInput.View(), mutedStyle.Render(" (0=auto)")},
+		{"Address:       ", p.addressInput.View(), ""},
 	}
 
 	for i, f := range fields {
@@ -412,8 +420,23 @@ func (p *PortForwardPicker) renderBox() string {
 		if i == p.focusedField {
 			style = focusLabelStyle
 		}
-		line := style.Render(f.label) + " " + f.view
+		line := style.Render(f.label) + " " + f.view + f.suffix
 		lines = append(lines, padContent(line))
+	}
+
+	// Container disambiguation note when multiple containers match the typed port
+	if multiContainer {
+		if containerPort, err := strconv.Atoi(p.containerPortInput.Value()); err == nil {
+			matches := p.containersForPort(int32(containerPort))
+			if len(matches) > 1 {
+				lines = append(lines, padContent(mutedStyle.Render("→ using container: "+matches[0])))
+			}
+		}
+	}
+
+	// Validation error message
+	if p.errorMsg != "" {
+		lines = append(lines, padContent(errorStyle.Render(p.errorMsg)))
 	}
 
 	// Blank separator + footer shortcuts
