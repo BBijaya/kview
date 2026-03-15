@@ -726,34 +726,6 @@ func (a *App) ensureGenericInformer(info *k8s.APIResourceInfo) {
 	a.informers[ViewGenericResource].Start(a.namespace)
 }
 
-// showAPIResourcePicker populates and displays the API resource picker overlay.
-func (a *App) showAPIResourcePicker() tea.Cmd {
-	reg := a.client.APIResources()
-	if reg == nil {
-		a.setStatus("API resources not available", true)
-		return nil
-	}
-	all := reg.All()
-	if len(all) == 0 {
-		a.setStatus("API resources not yet discovered", true)
-		return nil
-	}
-	items := make([]components.PickerItem, 0, len(all))
-	for _, info := range all {
-		group := info.Group
-		if group == "" {
-			group = "core"
-		}
-		items = append(items, components.PickerItem{
-			ID:    info.Resource,
-			Label: info.Resource,
-			Desc:  fmt.Sprintf("%s/%s (%s)", group, info.Version, info.Kind),
-		})
-	}
-	a.apiResourcePicker.SetItems(items)
-	return nil
-}
-
 // editResource opens the selected resource in the user's editor via tea.Exec.
 func (a *App) editResource(kind, namespace, name string) tea.Cmd {
 	k8sClient, ok := a.client.(*k8s.K8sClient)

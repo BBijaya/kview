@@ -48,6 +48,7 @@ const (
 	ViewPortForwards
 	ViewContextSelect
 	ViewEndpointSlices
+	ViewAPIResources
 )
 
 // SwitchViewMsg requests switching to a different view

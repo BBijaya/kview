@@ -356,7 +356,7 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 			strings.Join(lines, "\n"), 10*time.Second)
 
 	case "api-resources", "ar":
-		return a.showAPIResourcePicker()
+		return a.switchView(ViewAPIResources)
 
 	default:
 		// Try discovery before reporting unknown command

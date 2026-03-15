@@ -70,6 +70,7 @@ const (
 	ViewHelp             = theme.ViewHelp
 	ViewPortForwards     = theme.ViewPortForwards
 	ViewContextSelect    = theme.ViewContextSelect
+	ViewAPIResources     = theme.ViewAPIResources
 )
 
 
@@ -192,6 +193,8 @@ func ViewName(v ViewType) string {
 		return "Port Forwards"
 	case ViewContextSelect:
 		return "Contexts"
+	case ViewAPIResources:
+		return "API Resources"
 	default:
 		return "Unknown"
 	}

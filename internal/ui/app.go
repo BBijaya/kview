@@ -101,14 +101,13 @@ type App struct {
 	searchInput   *components.SearchInput
 
 	// New components (Phase 1)
-	namespacePicker *components.Picker
 	detailsPanel    *components.DetailsPanel
 	toasts          *components.ToastStack
 
 	// Generic resource view
 	genericView         *views.GenericResourceView
 	genericResourceKind string // current resource plural name
-	apiResourcePicker   *components.Picker
+	apiResourcesView    *views.APIResourcesView
 
 	// Port forwarding
 	pfManager *k8s.PortForwardManager
@@ -210,16 +209,16 @@ func NewApp(client k8s.Client) *App {
 		frame:           components.NewFrame(),
 		commandInput:    components.NewCommandInput(),
 		searchInput:     components.NewSearchInput(),
-		namespacePicker: components.NewPicker("namespace", "Select Namespace"),
 		detailsPanel:    components.NewDetailsPanel(client),
 		toasts:          components.NewToastStack(),
 		refreshInterval: 5 * time.Second,
 	}
 
-	// Initialize generic resource view and API resource picker
+	// Initialize generic resource view and API resources view
 	app.genericView = views.NewGenericResourceView(client)
 	app.views[ViewGenericResource] = app.genericView
-	app.apiResourcePicker = components.NewPicker("api-resource", "Select API Resource")
+	app.apiResourcesView = views.NewAPIResourcesView(client)
+	app.views[ViewAPIResources] = app.apiResourcesView
 
 	// Initialize port forward manager, picker, and view
 	app.pfManager = k8s.NewPortForwardManager(client.GetRestConfig(), client.GetClientset())
