@@ -126,6 +126,15 @@ func (v *StatefulSetsView) Update(msg tea.Msg) (View, tea.Cmd) {
 		case key.Matches(msg, theme.DefaultKeyMap().Refresh):
 			return v, v.Refresh()
 
+		case key.Matches(msg, theme.DefaultKeyMap().Logs):
+			if row := v.table.SelectedRow(); row != nil {
+				for _, sts := range v.statefulsets {
+					if sts.UID == row.ID {
+						return v, LogsForWorkload(v.client, "statefulsets", sts.Namespace, sts.Name)
+					}
+				}
+			}
+
 		case key.Matches(msg, theme.DefaultKeyMap().Describe):
 			if row := v.table.SelectedRow(); row != nil {
 				for _, sts := range v.statefulsets {
@@ -262,6 +271,7 @@ func (v *StatefulSetsView) ShortHelp() []key.Binding {
 		theme.DefaultKeyMap().Down,
 		theme.DefaultKeyMap().Enter,
 		theme.DefaultKeyMap().Filter,
+		theme.DefaultKeyMap().Logs,
 		theme.DefaultKeyMap().Describe,
 		theme.DefaultKeyMap().Restart,
 		theme.DefaultKeyMap().Scale,

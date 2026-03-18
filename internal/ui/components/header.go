@@ -435,13 +435,40 @@ func (h *Header) getShortcutItems() []shortcutItem {
 	case "deployments":
 		items = []shortcutItem{
 			{"d", "Describe"}, {"y", "YAML"},
-			{"r", "Restart"}, {"s", "Scale"},
-			{"ctrl+d", "Delete"},
+			{"l", "Logs"}, {"r", "Restart"},
+			{"s", "Scale"}, {"ctrl+d", "Delete"},
 		}
 	case "services":
 		items = []shortcutItem{
 			{"d", "Describe"}, {"y", "YAML"},
 			{"F", "Port-Forward"}, {"ctrl+d", "Delete"},
+		}
+	case "statefulsets":
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"l", "Logs"}, {"r", "Restart"},
+			{"s", "Scale"}, {"ctrl+d", "Delete"},
+		}
+	case "daemonsets":
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"l", "Logs"}, {"r", "Restart"},
+			{"ctrl+d", "Delete"},
+		}
+	case "replicasets":
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"l", "Logs"}, {"ctrl+d", "Delete"},
+		}
+	case "jobs":
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"l", "Logs"}, {"ctrl+d", "Delete"},
+		}
+	case "cronjobs":
+		items = []shortcutItem{
+			{"d", "Describe"}, {"y", "YAML"},
+			{"l", "Logs"}, {"ctrl+d", "Delete"},
 		}
 	case "configmaps":
 		items = []shortcutItem{

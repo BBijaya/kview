@@ -75,6 +75,9 @@ type Client interface {
 	// Access check
 	CheckWriteAccess(ctx context.Context) string
 
+	// Pod lookup for workload log viewing
+	FindPodsForResource(ctx context.Context, resource, namespace, name string) ([]PodInfo, error)
+
 	// Metadata
 	ClusterID() string
 	ServerVersion() string

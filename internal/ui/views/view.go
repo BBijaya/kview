@@ -1,6 +1,8 @@
 package views
 
 import (
+	"context"
+
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
@@ -169,4 +171,26 @@ func (v *BaseView) Blur() {
 // IsFocused returns whether the view is focused
 func (v *BaseView) IsFocused() bool {
 	return v.focused
+}
+
+// LogsForWorkload finds pods owned by a workload resource and opens logs for the first running pod.
+func LogsForWorkload(client k8s.Client, resource, namespace, name string) tea.Cmd {
+	return func() tea.Msg {
+		pods, err := client.FindPodsForResource(context.Background(), resource, namespace, name)
+		if err != nil {
+			return StatusMsg{Message: "Failed to find pods: " + err.Error(), IsError: true}
+		}
+		if len(pods) == 0 {
+			return StatusMsg{Message: "No pods found for " + name, IsError: true}
+		}
+		pod := pods[0]
+		return OpenViewMsg{
+			TargetView: theme.ViewLogs,
+			Kind:       "Pod",
+			Resource:   "pods",
+			Namespace:  pod.Namespace,
+			Name:       pod.Name,
+			UID:        pod.UID,
+		}
+	}
 }

@@ -160,11 +160,16 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 		return nil
 
 	case "logs", "log":
-		if a.selectedResource != nil && a.selectedResource.Kind == "Pod" {
-			a.logsView.SetPod(a.selectedResource.Namespace, a.selectedResource.Name, "")
-			return a.switchView(ViewLogs)
+		if a.selectedResource != nil {
+			switch a.selectedResource.Kind {
+			case "Pod":
+				a.logsView.SetPod(a.selectedResource.Namespace, a.selectedResource.Name, "")
+				return a.switchView(ViewLogs)
+			case "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet", "Job", "CronJob":
+				return views.LogsForWorkload(a.client, a.selectedResource.Resource, a.selectedResource.Namespace, a.selectedResource.Name)
+			}
 		}
-		a.setStatus("Select a pod to view logs", true)
+		a.setStatus("Select a workload resource to view logs", true)
 		return nil
 
 	case "shell", "sh", "exec":
