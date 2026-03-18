@@ -486,6 +486,103 @@ func (c *K8sClient) ListRoleBindings(ctx context.Context, namespace string) ([]R
 	return result, nil
 }
 
+// FindPodsForResource finds pods owned by a workload resource (deployment, statefulset, etc.)
+// by extracting the resource's label selector and listing matching pods.
+func (c *K8sClient) FindPodsForResource(ctx context.Context, resource, namespace, name string) ([]PodInfo, error) {
+	labelSelector, err := c.getWorkloadSelector(ctx, resource, namespace, name)
+	if err != nil {
+		return nil, err
+	}
+
+	pods, err := c.clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pods: %w", err)
+	}
+
+	var result []PodInfo
+	for i := range pods.Items {
+		result = append(result, c.podToPodInfo(&pods.Items[i]))
+	}
+
+	// Sort: running pods first, then by newest creation time
+	sort.Slice(result, func(i, j int) bool {
+		iRunning := result[i].Phase == "Running"
+		jRunning := result[j].Phase == "Running"
+		if iRunning != jRunning {
+			return iRunning
+		}
+		return result[i].Age < result[j].Age // smaller age = newer
+	})
+
+	return result, nil
+}
+
+// getWorkloadSelector extracts the label selector string for a workload resource.
+func (c *K8sClient) getWorkloadSelector(ctx context.Context, resource, namespace, name string) (string, error) {
+	switch resource {
+	case "deployments":
+		obj, err := c.clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return "", err
+		}
+		return metav1.FormatLabelSelector(obj.Spec.Selector), nil
+
+	case "statefulsets":
+		obj, err := c.clientset.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return "", err
+		}
+		return metav1.FormatLabelSelector(obj.Spec.Selector), nil
+
+	case "daemonsets":
+		obj, err := c.clientset.AppsV1().DaemonSets(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return "", err
+		}
+		return metav1.FormatLabelSelector(obj.Spec.Selector), nil
+
+	case "replicasets":
+		obj, err := c.clientset.AppsV1().ReplicaSets(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return "", err
+		}
+		return metav1.FormatLabelSelector(obj.Spec.Selector), nil
+
+	case "jobs":
+		obj, err := c.clientset.BatchV1().Jobs(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return "", err
+		}
+		return metav1.FormatLabelSelector(obj.Spec.Selector), nil
+
+	case "cronjobs":
+		// CronJobs don't directly own pods. Find the most recent Job owned by this CronJob.
+		jobs, err := c.clientset.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return "", err
+		}
+		var latestJob *batchv1.Job
+		for i := range jobs.Items {
+			for _, ref := range jobs.Items[i].OwnerReferences {
+				if ref.Kind == "CronJob" && ref.Name == name {
+					if latestJob == nil || jobs.Items[i].CreationTimestamp.After(latestJob.CreationTimestamp.Time) {
+						latestJob = &jobs.Items[i]
+					}
+				}
+			}
+		}
+		if latestJob == nil {
+			return "", fmt.Errorf("no jobs found for cronjob %s", name)
+		}
+		return metav1.FormatLabelSelector(latestJob.Spec.Selector), nil
+
+	default:
+		return "", fmt.Errorf("unsupported resource type for pod lookup: %s", resource)
+	}
+}
+
 // GetContexts returns a list of available context names
 func (c *K8sClient) GetContexts() ([]string, error) {
 	return GetAvailableContexts()

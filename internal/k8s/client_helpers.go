@@ -322,6 +322,10 @@ func (c *DisconnectedClient) GetHelmManifest(ctx context.Context, namespace, rel
 	return "", fmt.Errorf(c.errorMessage)
 }
 
+func (c *DisconnectedClient) FindPodsForResource(ctx context.Context, resource, namespace, name string) ([]PodInfo, error) {
+	return nil, fmt.Errorf(c.errorMessage)
+}
+
 func (c *DisconnectedClient) APIResources() *APIResourceRegistry {
 	return NewAPIResourceRegistry()
 }

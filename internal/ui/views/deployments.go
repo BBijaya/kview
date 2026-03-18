@@ -192,6 +192,15 @@ func (v *DeploymentsView) Update(msg tea.Msg) (View, tea.Cmd) {
 				}
 			}
 
+		case key.Matches(msg, theme.DefaultKeyMap().Logs):
+			if row := v.table.SelectedRow(); row != nil {
+				for _, dep := range v.deployments {
+					if dep.UID == row.ID {
+						return v, LogsForWorkload(v.client, "deployments", dep.Namespace, dep.Name)
+					}
+				}
+			}
+
 		case key.Matches(msg, theme.DefaultKeyMap().Describe):
 			if row := v.table.SelectedRow(); row != nil {
 				for _, dep := range v.deployments {
@@ -277,6 +286,7 @@ func (v *DeploymentsView) ShortHelp() []key.Binding {
 		theme.DefaultKeyMap().Down,
 		theme.DefaultKeyMap().Enter,
 		theme.DefaultKeyMap().Filter,
+		theme.DefaultKeyMap().Logs,
 		theme.DefaultKeyMap().Restart,
 		theme.DefaultKeyMap().Scale,
 	}

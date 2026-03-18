@@ -128,6 +128,15 @@ func (v *CronJobsView) Update(msg tea.Msg) (View, tea.Cmd) {
 		case key.Matches(msg, theme.DefaultKeyMap().Refresh):
 			return v, v.Refresh()
 
+		case key.Matches(msg, theme.DefaultKeyMap().Logs):
+			if row := v.table.SelectedRow(); row != nil {
+				for _, cj := range v.cronjobs {
+					if cj.UID == row.ID {
+						return v, LogsForWorkload(v.client, "cronjobs", cj.Namespace, cj.Name)
+					}
+				}
+			}
+
 		case key.Matches(msg, theme.DefaultKeyMap().Describe):
 			if row := v.table.SelectedRow(); row != nil {
 				for _, cj := range v.cronjobs {
@@ -230,6 +239,7 @@ func (v *CronJobsView) ShortHelp() []key.Binding {
 		theme.DefaultKeyMap().Down,
 		theme.DefaultKeyMap().Enter,
 		theme.DefaultKeyMap().Filter,
+		theme.DefaultKeyMap().Logs,
 		theme.DefaultKeyMap().Describe,
 		theme.DefaultKeyMap().Delete,
 	}
