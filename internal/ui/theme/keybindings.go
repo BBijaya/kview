@@ -44,6 +44,7 @@ type KeyMap struct {
 	Restart     key.Binding
 	Scale       key.Binding
 	Shell       key.Binding
+	Attach      key.Binding
 	PortForward key.Binding
 	Edit        key.Binding
 	Refresh     key.Binding
@@ -213,6 +214,10 @@ func DefaultKeyMap() KeyMap {
 		Shell: key.NewBinding(
 			key.WithKeys("s"),
 			key.WithHelp("s", "shell"),
+		),
+		Attach: key.NewBinding(
+			key.WithKeys("a"),
+			key.WithHelp("a", "attach"),
 		),
 		PortForward: key.NewBinding(
 			key.WithKeys("F"),

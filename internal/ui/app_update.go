@@ -833,6 +833,20 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.setStatus(errMsg, true)
 		cmds = append(cmds, a.toasts.PushError("Port Forward Failed", msg.Err.Error()))
 
+	case views.ExecAttachMsg:
+		config := a.client.GetRestConfig()
+		clientset := a.client.GetClientset()
+		if config == nil || clientset == nil {
+			a.setStatus("Attach not available: no cluster connection", true)
+			cmds = append(cmds, a.toasts.PushError("Attach Failed", "No cluster connection"))
+			return a, tea.Batch(cmds...)
+		}
+		attachCmd := k8s.NewAttachCmd(clientset, config, msg.Namespace, msg.Pod, msg.Container)
+		a.execing = true
+		return a, tea.Exec(attachCmd, func(err error) tea.Msg {
+			return ShellExitMsg{Err: err}
+		})
+
 	case views.ExecShellMsg:
 		config := a.client.GetRestConfig()
 		clientset := a.client.GetClientset()

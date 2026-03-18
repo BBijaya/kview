@@ -61,6 +61,13 @@ type ExecShellMsg struct {
 	Container string
 }
 
+// ExecAttachMsg requests attaching to a running container's main process
+type ExecAttachMsg struct {
+	Namespace string
+	Pod       string
+	Container string
+}
+
 // PortForwardMsg requests opening the port forward picker for a resource
 type PortForwardMsg struct {
 	Namespace    string
@@ -297,6 +304,27 @@ func (v *PodsView) Update(msg tea.Msg) (View, tea.Cmd) {
 				}
 			}
 
+		case key.Matches(msg, theme.DefaultKeyMap().Attach):
+			if pod := v.SelectedPod(); pod != nil {
+				if pod.Phase != "Running" {
+					return v, func() tea.Msg {
+						return StatusMsg{Message: "Pod is not running", IsError: true}
+					}
+				}
+				container := ""
+				if len(pod.Containers) > 0 {
+					container = pod.Containers[0].Name
+				}
+				p := *pod
+				return v, func() tea.Msg {
+					return ExecAttachMsg{
+						Namespace: p.Namespace,
+						Pod:       p.Name,
+						Container: container,
+					}
+				}
+			}
+
 		case key.Matches(msg, theme.DefaultKeyMap().PortForward):
 			if pod := v.SelectedPod(); pod != nil {
 				p := *pod
@@ -364,6 +392,8 @@ func (v *PodsView) ShortHelp() []key.Binding {
 		theme.DefaultKeyMap().Enter,
 		theme.DefaultKeyMap().Filter,
 		theme.DefaultKeyMap().Logs,
+		theme.DefaultKeyMap().Shell,
+		theme.DefaultKeyMap().Attach,
 		theme.DefaultKeyMap().Describe,
 	}
 }

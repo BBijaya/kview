@@ -131,6 +131,24 @@ func (v *ContainersView) Update(msg tea.Msg) (View, tea.Cmd) {
 				}
 			}
 
+		case key.Matches(msg, theme.DefaultKeyMap().Attach):
+			if c := v.selectedContainer(); c != nil {
+				if v.pod.Phase != "Running" {
+					return v, func() tea.Msg {
+						return StatusMsg{Message: "Pod is not running", IsError: true}
+					}
+				}
+				container := c.Name
+				pod := v.pod
+				return v, func() tea.Msg {
+					return ExecAttachMsg{
+						Namespace: pod.Namespace,
+						Pod:       pod.Name,
+						Container: container,
+					}
+				}
+			}
+
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
 			return v, func() tea.Msg { return GoBackMsg{} }
 
@@ -172,6 +190,8 @@ func (v *ContainersView) ShortHelp() []key.Binding {
 		theme.DefaultKeyMap().Down,
 		theme.DefaultKeyMap().Enter,
 		theme.DefaultKeyMap().Logs,
+		theme.DefaultKeyMap().Shell,
+		theme.DefaultKeyMap().Attach,
 		theme.DefaultKeyMap().Describe,
 		theme.DefaultKeyMap().Escape,
 	}
