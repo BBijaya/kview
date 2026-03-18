@@ -180,6 +180,105 @@ func (c *ShellExecCmd) getFd() (int, bool) {
 	return int(os.Stdin.Fd()), true
 }
 
+// AttachCmd implements tea.ExecCommand for attaching to a running container.
+// It connects to the container's main process via SPDY and streams stdin/stdout/stderr.
+type AttachCmd struct {
+	clientset *kubernetes.Clientset
+	config    *rest.Config
+	namespace string
+	pod       string
+	container string
+	stdin     io.Reader
+	stdout    io.Writer
+	stderr    io.Writer
+}
+
+// NewAttachCmd creates a new AttachCmd for the given pod/container.
+func NewAttachCmd(clientset *kubernetes.Clientset, config *rest.Config, namespace, pod, container string) *AttachCmd {
+	return &AttachCmd{
+		clientset: clientset,
+		config:    config,
+		namespace: namespace,
+		pod:       pod,
+		container: container,
+	}
+}
+
+func (c *AttachCmd) SetStdin(r io.Reader)  { c.stdin = r }
+func (c *AttachCmd) SetStdout(w io.Writer) { c.stdout = os.Stdout }
+func (c *AttachCmd) SetStderr(w io.Writer) { c.stderr = os.Stderr }
+
+// Run attaches to the container's main process.
+func (c *AttachCmd) Run() error {
+	// Clear screen and show banner with warning
+	fmt.Fprintf(os.Stdout, "\033[2J\033[H")
+	fmt.Fprintf(os.Stdout, "<<kview-Attach>> Pod: %s/%s | Container: %s\n", c.namespace, c.pod, c.container)
+	fmt.Fprintf(os.Stdout, "⚠  WARNING: ctrl+c may kill the container's main process\n")
+
+	fd, ok := c.getFd()
+	if !ok {
+		return fmt.Errorf("stdin is not a terminal")
+	}
+
+	oldState, err := term.MakeRaw(fd)
+	if err != nil {
+		return fmt.Errorf("failed to set terminal raw mode: %w", err)
+	}
+	defer term.Restore(fd, oldState)
+
+	tsq := newTerminalSizeQueue(fd)
+	defer tsq.stop()
+
+	req := c.clientset.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(c.pod).
+		Namespace(c.namespace).
+		SubResource("attach").
+		VersionedParams(&corev1.PodAttachOptions{
+			Container: c.container,
+			Stdin:     true,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       true,
+		}, scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(c.config, "POST", req.URL())
+	if err != nil {
+		return fmt.Errorf("failed to create executor: %w", err)
+	}
+
+	stdinReader := c.stdin
+	cr, crErr := cancelreader.NewReader(c.stdin)
+	if crErr == nil {
+		stdinReader = cr
+	}
+
+	streamErr := exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
+		Stdin:             stdinReader,
+		Stdout:            os.Stdout,
+		Stderr:            os.Stderr,
+		Tty:               true,
+		TerminalSizeQueue: tsq,
+	})
+
+	if crErr == nil {
+		cr.Cancel()
+		cr.Close()
+	}
+
+	if errors.Is(streamErr, io.EOF) || errors.Is(streamErr, context.Canceled) {
+		return nil
+	}
+	return streamErr
+}
+
+func (c *AttachCmd) getFd() (int, bool) {
+	if f, ok := c.stdin.(*os.File); ok {
+		return int(f.Fd()), true
+	}
+	return int(os.Stdin.Fd()), true
+}
+
 // terminalSizeQueue implements remotecommand.TerminalSizeQueue.
 // It listens for SIGWINCH and sends terminal size updates.
 type terminalSizeQueue struct {

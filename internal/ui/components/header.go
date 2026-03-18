@@ -430,7 +430,8 @@ func (h *Header) getShortcutItems() []shortcutItem {
 		items = []shortcutItem{
 			{"d", "Describe"}, {"y", "YAML"},
 			{"l", "Logs"}, {"s", "Shell"},
-			{"F", "Port-Forward"}, {"ctrl+d", "Delete"},
+			{"a", "Attach"}, {"F", "Port-Forward"},
+			{"ctrl+d", "Delete"},
 		}
 	case "deployments":
 		items = []shortcutItem{
@@ -487,7 +488,7 @@ func (h *Header) getShortcutItems() []shortcutItem {
 	case "containers":
 		items = []shortcutItem{
 			{"d", "Describe"}, {"l", "Logs"},
-			{"s", "Shell"},
+			{"s", "Shell"}, {"a", "Attach"},
 		}
 	case "helmreleases":
 		items = []shortcutItem{
