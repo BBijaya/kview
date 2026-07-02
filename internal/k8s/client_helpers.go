@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -150,124 +151,129 @@ func (c *DisconnectedClient) ErrorMessage() string {
 	return c.errorMessage
 }
 
+// err returns the connection error for all operations
+func (c *DisconnectedClient) err() error {
+	return errors.New(c.errorMessage)
+}
+
 func (c *DisconnectedClient) List(ctx context.Context, kind, namespace string) ([]Resource, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) Get(ctx context.Context, kind, namespace, name string) (*Resource, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) Watch(ctx context.Context, kind, namespace string) (<-chan WatchEvent, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) GetClusterMetrics(ctx context.Context) (*ClusterMetrics, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListPodMetrics(ctx context.Context, namespace string) ([]PodMetrics, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListNodeMetrics(ctx context.Context) ([]NodeMetrics, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) Delete(ctx context.Context, kind, namespace, name string) error {
-	return fmt.Errorf(c.errorMessage)
+	return c.err()
 }
 
 func (c *DisconnectedClient) Restart(ctx context.Context, kind, namespace, name string) error {
-	return fmt.Errorf(c.errorMessage)
+	return c.err()
 }
 
 func (c *DisconnectedClient) Scale(ctx context.Context, kind, namespace, name string, replicas int) error {
-	return fmt.Errorf(c.errorMessage)
+	return c.err()
 }
 
 func (c *DisconnectedClient) Logs(ctx context.Context, namespace, pod, container string, opts LogOptions) (io.ReadCloser, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListPods(ctx context.Context, namespace string) ([]PodInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListDeployments(ctx context.Context, namespace string) ([]DeploymentInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListServices(ctx context.Context, namespace string) ([]ServiceInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListEndpoints(ctx context.Context, namespace string) ([]EndpointInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListEndpointSlices(ctx context.Context, namespace string) ([]EndpointSliceInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListConfigMaps(ctx context.Context, namespace string) ([]ConfigMapInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListSecrets(ctx context.Context, namespace string) ([]SecretInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) GetSecretDecoded(ctx context.Context, namespace, name string) (string, error) {
-	return "", fmt.Errorf(c.errorMessage)
+	return "", c.err()
 }
 
 func (c *DisconnectedClient) ListIngresses(ctx context.Context, namespace string) ([]IngressInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListPVCs(ctx context.Context, namespace string) ([]PVCInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListStatefulSets(ctx context.Context, namespace string) ([]StatefulSetInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListNodes(ctx context.Context) ([]NodeInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListEvents(ctx context.Context, namespace string) ([]EventInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListReplicaSets(ctx context.Context, namespace string) ([]ReplicaSetInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListDaemonSets(ctx context.Context, namespace string) ([]DaemonSetInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListJobs(ctx context.Context, namespace string) ([]JobInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListCronJobs(ctx context.Context, namespace string) ([]CronJobInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) GetNamespaces(ctx context.Context) ([]string, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListNamespaceInfos(ctx context.Context) ([]NamespaceInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) GetContexts() ([]string, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ClusterID() string {
@@ -295,35 +301,35 @@ func (c *DisconnectedClient) GetClientset() *kubernetes.Clientset {
 }
 
 func (c *DisconnectedClient) ListHPAs(ctx context.Context, namespace string) ([]HPAInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListPVs(ctx context.Context) ([]PVInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListRoleBindings(ctx context.Context, namespace string) ([]RoleBindingInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListHelmReleases(ctx context.Context, namespace string) ([]HelmReleaseInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) ListHelmReleaseHistory(ctx context.Context, namespace, releaseName string) ([]HelmReleaseInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) GetHelmValues(ctx context.Context, namespace, releaseName string, revision int) (string, error) {
-	return "", fmt.Errorf(c.errorMessage)
+	return "", c.err()
 }
 
 func (c *DisconnectedClient) GetHelmManifest(ctx context.Context, namespace, releaseName string, revision int) (string, error) {
-	return "", fmt.Errorf(c.errorMessage)
+	return "", c.err()
 }
 
 func (c *DisconnectedClient) FindPodsForResource(ctx context.Context, resource, namespace, name string) ([]PodInfo, error) {
-	return nil, fmt.Errorf(c.errorMessage)
+	return nil, c.err()
 }
 
 func (c *DisconnectedClient) APIResources() *APIResourceRegistry {
