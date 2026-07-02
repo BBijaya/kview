@@ -193,19 +193,44 @@ func (a *App) doSwitchView(viewType ViewType) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+// Minimum layout dimensions. Below these the fixed chrome (7-line header,
+// bordered body, footer) cannot be laid out meaningfully; View() shows a
+// "terminal too small" notice instead.
+const (
+	minLayoutWidth  = 40
+	minLayoutHeight = 15
+)
+
+// layoutSize returns the terminal dimensions clamped to the minimum layout
+// size. View() and updateSizes() must both use this so components are sized
+// with the same values the renderer lays out with — sizing from raw values
+// while rendering with clamped ones garbles small terminals.
+func (a *App) layoutSize() (int, int) {
+	w, h := a.width, a.height
+	if w < minLayoutWidth {
+		w = minLayoutWidth
+	}
+	if h < minLayoutHeight {
+		h = minLayoutHeight
+	}
+	return w, h
+}
+
 func (a *App) updateSizes() {
+	width, height := a.layoutSize()
+
 	// Body inner width (frame border offset)
-	innerWidth := a.width - 2
+	innerWidth := width - 2
 
 	// Header gets full terminal width (no border)
-	a.header.SetWidth(a.width)
+	a.header.SetWidth(width)
 	// Other components use body inner width
 	a.statusBar.SetWidth(innerWidth)
 	a.tabs.SetWidth(innerWidth)
 	a.tabBar.SetWidth(innerWidth)
 	a.categoryTabs.SetWidth(innerWidth)
-	a.palette.SetSize(a.width, a.height)
-	a.dialog.SetWidth(min(50, a.width-10))
+	a.palette.SetSize(width, height)
+	a.dialog.SetWidth(min(50, width-10))
 	a.commandInput.SetWidth(innerWidth)
 	a.searchInput.SetWidth(innerWidth)
 
@@ -220,7 +245,7 @@ func (a *App) updateSizes() {
 	if a.inputMode == ModeCommand || a.inputMode == ModeFilter {
 		commandBoxHeight = 3
 	}
-	bodyBoxHeight := a.height - headerHeight - commandBoxHeight - footerHeight
+	bodyBoxHeight := height - headerHeight - commandBoxHeight - footerHeight
 	if bodyBoxHeight < 5 {
 		bodyBoxHeight = 5
 	}
