@@ -38,6 +38,7 @@ func (a *App) View() tea.View {
 		v := tea.NewView(theme.TruncateString(msg, a.width))
 		v.AltScreen = true
 		v.BackgroundColor = theme.ColorBackground
+		v.WindowTitle = "kview"
 		return v
 	}
 
@@ -169,7 +170,20 @@ func (a *App) View() tea.View {
 	v.AltScreen = true
 	v.BackgroundColor = theme.ColorBackground
 	v.ForegroundColor = theme.ColorText
+	v.WindowTitle = a.windowTitle()
 	return v
+}
+
+// windowTitle builds the terminal window/tab title, e.g. "kview — Pods (minikube)".
+func (a *App) windowTitle() string {
+	viewName := ViewName(a.activeView)
+	if a.activeView == ViewGenericResource && a.genericView != nil {
+		viewName = a.genericView.Name()
+	}
+	if a.context == "" {
+		return "kview — " + viewName
+	}
+	return fmt.Sprintf("kview — %s (%s)", viewName, a.context)
 }
 
 // getCategoryName returns the current category name
