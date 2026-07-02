@@ -70,9 +70,23 @@ type XrayView struct {
 	focusNS   string          // Mode 2: explicit namespace from ns/kind/name syntax
 	expanded  map[string]bool // Expand/collapse state by UID
 	flatNodes []*xrayNode     // Current flattened tree
+	navStack  []xrayNavState  // Drill-in history; Escape pops back through it
 	loading   bool
 	err       error
 	spinner   *components.Spinner
+}
+
+// xrayNavState snapshots the view state before a drill-in so Escape can
+// restore the exact previous tree (mode, expansion, selection).
+type xrayNavState struct {
+	mode       xrayMode
+	rootKind   string
+	focusName  string
+	focusUID   string
+	focusKind  string
+	focusNS    string
+	expanded   map[string]bool
+	selectedID string
 }
 
 // NewXrayView creates a new xray view
@@ -92,6 +106,7 @@ func NewXrayView(client k8s.Client) *XrayView {
 
 // SetMode configures the xray view mode from a command argument.
 func (v *XrayView) SetMode(arg string) error {
+	v.navStack = nil // fresh entry point: no drill trail to pop back through
 	arg = strings.TrimSpace(arg)
 	if arg == "" {
 		v.mode = xrayModeType
@@ -160,6 +175,83 @@ func (v *XrayView) SetModeForResource(kind, name, ns, uid string) {
 	v.focusKind = ""  // UID is known; no kind filter needed
 	v.focusNS = ""
 	v.rootKind = ""
+	v.navStack = nil // fresh entry point: no drill trail to pop back through
+}
+
+// isDrillable reports whether a tree node can be drilled into (re-focused
+// as the xray root). Headers, hint lines, and containers (whose
+// relationships belong to their pod) are not drillable. Drilling into the
+// node already in focus would be a no-op.
+func (v *XrayView) isDrillable(node *xrayNode) bool {
+	if node.isNsHeader || node.isSectionHeader || node.isOwnerHint {
+		return false
+	}
+	if node.kind == "" || node.kind == "Container" {
+		return false
+	}
+	return node.uid != v.focusUID
+}
+
+// drillInto pushes the current view state and re-focuses the xray on the
+// given node. The graph already holds every resource, so no refetch is
+// needed — just re-flatten around the new focus.
+func (v *XrayView) drillInto(node *xrayNode) {
+	snapshot := xrayNavState{
+		mode:      v.mode,
+		rootKind:  v.rootKind,
+		focusName: v.focusName,
+		focusUID:  v.focusUID,
+		focusKind: v.focusKind,
+		focusNS:   v.focusNS,
+		expanded:  v.expanded,
+	}
+	if sel := v.selectedNode(); sel != nil {
+		snapshot.selectedID = sel.uid
+	}
+	v.navStack = append(v.navStack, snapshot)
+
+	v.mode = xrayModeResource
+	v.rootKind = ""
+	v.focusNS = ""
+	if strings.Contains(node.uid, "/") {
+		// Synthetic UID (env-ref duplicate etc.) — not a real graph node;
+		// resolve the focus by kind+name+namespace instead.
+		v.focusUID = ""
+		v.focusName = node.name
+		v.focusKind = node.kind
+		v.focusNS = node.ns
+	} else {
+		v.focusUID = node.uid
+		v.focusName = node.name
+		v.focusKind = ""
+	}
+
+	v.expanded = make(map[string]bool)
+	v.initExpanded()
+	v.rebuildTable()
+}
+
+// popNav restores the most recent pre-drill state. Returns false when the
+// trail is empty (Escape should then leave the view).
+func (v *XrayView) popNav() bool {
+	if len(v.navStack) == 0 {
+		return false
+	}
+	s := v.navStack[len(v.navStack)-1]
+	v.navStack = v.navStack[:len(v.navStack)-1]
+
+	v.mode = s.mode
+	v.rootKind = s.rootKind
+	v.focusName = s.focusName
+	v.focusUID = s.focusUID
+	v.focusKind = s.focusKind
+	v.focusNS = s.focusNS
+	v.expanded = s.expanded
+	v.rebuildTable()
+	if s.selectedID != "" {
+		v.table.SelectByID(s.selectedID)
+	}
+	return true
 }
 
 // resolveKindAlias resolves command aliases to canonical Kind names
@@ -227,15 +319,31 @@ func (v *XrayView) Update(msg tea.Msg) (View, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, theme.DefaultKeyMap().Escape):
+			// Step back through the drill-in trail before leaving the view
+			if v.popNav() {
+				return v, nil
+			}
 			return v, func() tea.Msg { return GoBackMsg{} }
 
 		case key.Matches(msg, theme.DefaultKeyMap().Refresh):
 			return v, v.Refresh()
 
 		case key.Matches(msg, theme.DefaultKeyMap().Enter):
-			if node := v.selectedNode(); node != nil && node.hasChildren {
-				v.expanded[node.uid] = !v.expanded[node.uid]
-				v.rebuildTable()
+			if node := v.selectedNode(); node != nil {
+				if node.hasChildren {
+					v.expanded[node.uid] = !v.expanded[node.uid]
+					v.rebuildTable()
+				} else if v.isDrillable(node) {
+					// Leaf resource: drill in to its relationship map
+					v.drillInto(node)
+				}
+			}
+
+		case key.Matches(msg, theme.DefaultKeyMap().Xray):
+			// Drill into the selected resource even when it has children
+			// (Enter would expand it instead)
+			if node := v.selectedNode(); node != nil && v.isDrillable(node) {
+				v.drillInto(node)
 			}
 
 		case key.Matches(msg, theme.DefaultKeyMap().Describe):
@@ -405,6 +513,7 @@ func (v *XrayView) ShortHelp() []key.Binding {
 		theme.DefaultKeyMap().Up,
 		theme.DefaultKeyMap().Down,
 		theme.DefaultKeyMap().Enter,
+		theme.DefaultKeyMap().Xray,
 		theme.DefaultKeyMap().Describe,
 		theme.DefaultKeyMap().Escape,
 	}
