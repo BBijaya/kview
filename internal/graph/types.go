@@ -141,6 +141,19 @@ func (g *Graph) GetXrayChildren(uid string) []*Node {
 	return append(owned, refs...)
 }
 
+// GetOwners returns only parent nodes connected via RelationOwns edges
+func (g *Graph) GetOwners(uid string) []*Node {
+	var owners []*Node
+	for _, edge := range g.Edges {
+		if edge.To == uid && edge.Relation == RelationOwns {
+			if owner := g.Nodes[edge.From]; owner != nil {
+				owners = append(owners, owner)
+			}
+		}
+	}
+	return owners
+}
+
 // GetParents returns all nodes that have edges pointing to the given node
 func (g *Graph) GetParents(uid string) []*Node {
 	var parents []*Node

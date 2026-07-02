@@ -221,15 +221,20 @@ func (q *Query) FindUnhealthy() []*Node {
 func (q *Query) GetOwnerChain(uid string) []*Node {
 	var chain []*Node
 	current := uid
+	visited := map[string]bool{uid: true}
 
 	for {
-		parents := q.graph.GetParents(current)
-		if len(parents) == 0 {
+		owners := q.graph.GetOwners(current)
+		if len(owners) == 0 {
 			break
 		}
 
 		// Follow the first owner (typically there's only one)
-		owner := parents[0]
+		owner := owners[0]
+		if visited[owner.UID] {
+			break
+		}
+		visited[owner.UID] = true
 		chain = append([]*Node{owner}, chain...)
 		current = owner.UID
 	}
