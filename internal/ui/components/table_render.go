@@ -482,10 +482,17 @@ func (t *Table) View() string {
 			}
 			title := t.columns[i].Title
 			if i == t.sortCol {
-				if t.sortAsc {
-					title += " ▲"
+				// Keep the sort arrow visible on narrow columns: truncate
+				// the title to make room instead of losing the arrow (the
+				// only feedback that a sort is active).
+				arrow := " ▲"
+				if !t.sortAsc {
+					arrow = " ▼"
+				}
+				if aw := lipgloss.Width(arrow); hw > aw {
+					title = theme.TruncateString(title, hw-aw) + arrow
 				} else {
-					title += " ▼"
+					title = strings.TrimSpace(arrow)
 				}
 			}
 			headerContent.WriteString(t.headerStyle.Inline(true).Width(hw).Align(t.getColumnAlign(i)).Render(theme.TruncateString(title, hw)))
