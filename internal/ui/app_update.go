@@ -306,6 +306,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			if res != nil {
+				a.xrayView.ResetNav()
 				a.xrayView.SetModeForResource(
 					res.Kind,
 					res.Name,

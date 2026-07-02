@@ -105,8 +105,9 @@ func NewXrayView(client k8s.Client) *XrayView {
 }
 
 // SetMode configures the xray view mode from a command argument.
+// It does not touch the drill trail — callers choose ResetNav (fresh
+// entry from another view) or Retarget (chain from the current xray).
 func (v *XrayView) SetMode(arg string) error {
-	v.navStack = nil // fresh entry point: no drill trail to pop back through
 	arg = strings.TrimSpace(arg)
 	if arg == "" {
 		v.mode = xrayModeType
@@ -167,7 +168,8 @@ func (v *XrayView) SetMode(arg string) error {
 	return nil
 }
 
-// SetModeForResource sets Mode 2 directly for a specific resource
+// SetModeForResource sets Mode 2 directly for a specific resource.
+// Like SetMode, it leaves the drill trail to the caller (ResetNav/Retarget).
 func (v *XrayView) SetModeForResource(kind, name, ns, uid string) {
 	v.mode = xrayModeResource
 	v.focusName = name
@@ -175,7 +177,50 @@ func (v *XrayView) SetModeForResource(kind, name, ns, uid string) {
 	v.focusKind = ""  // UID is known; no kind filter needed
 	v.focusNS = ""
 	v.rootKind = ""
-	v.navStack = nil // fresh entry point: no drill trail to pop back through
+}
+
+// ResetNav clears the drill trail. Call when entering xray fresh from a
+// non-xray view, so Escape leaves the view instead of popping stale state.
+func (v *XrayView) ResetNav() {
+	v.navStack = nil
+}
+
+// snapshotNav pushes the current view state onto the drill trail.
+func (v *XrayView) snapshotNav() {
+	snapshot := xrayNavState{
+		mode:      v.mode,
+		rootKind:  v.rootKind,
+		focusName: v.focusName,
+		focusUID:  v.focusUID,
+		focusKind: v.focusKind,
+		focusNS:   v.focusNS,
+		expanded:  v.expanded,
+	}
+	if sel := v.selectedNode(); sel != nil {
+		snapshot.selectedID = sel.uid
+	}
+	v.navStack = append(v.navStack, snapshot)
+}
+
+// Retarget switches the xray to a new command target while already in the
+// xray view: the current state joins the Escape trail (like a drill-in) and
+// the tree rebuilds immediately from the existing graph — no refetch. The
+// returned cmd carries any resolution feedback (e.g. ambiguous-name toast).
+func (v *XrayView) Retarget(arg string) (tea.Cmd, error) {
+	v.snapshotNav()
+	if err := v.SetMode(arg); err != nil {
+		// Roll the pushed frame back off; nothing changed
+		v.navStack = v.navStack[:len(v.navStack)-1]
+		return nil, err
+	}
+	if v.graph == nil {
+		// No graph yet (shouldn't happen while active) — full load
+		return v.Refresh(), nil
+	}
+	v.expanded = make(map[string]bool)
+	cmd := v.initExpanded()
+	v.rebuildTable()
+	return cmd, nil
 }
 
 // isDrillable reports whether a tree node can be drilled into (re-focused
@@ -196,19 +241,7 @@ func (v *XrayView) isDrillable(node *xrayNode) bool {
 // given node. The graph already holds every resource, so no refetch is
 // needed — just re-flatten around the new focus.
 func (v *XrayView) drillInto(node *xrayNode) {
-	snapshot := xrayNavState{
-		mode:      v.mode,
-		rootKind:  v.rootKind,
-		focusName: v.focusName,
-		focusUID:  v.focusUID,
-		focusKind: v.focusKind,
-		focusNS:   v.focusNS,
-		expanded:  v.expanded,
-	}
-	if sel := v.selectedNode(); sel != nil {
-		snapshot.selectedID = sel.uid
-	}
-	v.navStack = append(v.navStack, snapshot)
+	v.snapshotNav()
 
 	v.mode = xrayModeResource
 	v.rootKind = ""
