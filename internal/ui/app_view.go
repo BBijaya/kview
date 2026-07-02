@@ -137,10 +137,14 @@ func (a *App) View() tea.View {
 		content = a.dialog.ViewOverlay(content)
 	}
 
-	// Overlay palette if visible
+	// Overlay palette if visible — composited like every other overlay so
+	// the app (and any dialog below it) stays visible around the box,
+	// keeping the palette's slightly-above-center placement.
 	if a.palette.IsVisible() {
-		overlay := a.palette.ViewCentered(a.width, a.height)
-		content = overlay
+		box := a.palette.View()
+		padLeft := (a.width - lipgloss.Width(box)) / 2
+		padTop := (a.height - lipgloss.Height(box)) / 3
+		content = components.Overlay(box, content, padLeft, padTop, a.width, a.height)
 	}
 
 	// Overlay port forward picker if visible (inline, on top of current view)
