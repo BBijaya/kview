@@ -81,6 +81,14 @@ func OverlayCenter(box, background string, screenWidth, screenHeight int) string
 	return Overlay(box, background, padLeft, padTop, screenWidth, screenHeight)
 }
 
+// TruncateANSI truncates a styled string to the given visual width, keeping
+// escape sequences intact and terminating with an SGR reset. Exported for
+// views that compose bordered lines from styled segments and must not let
+// content push through the border.
+func TruncateANSI(s string, width int) string {
+	return ansiTruncateClean(s, width)
+}
+
 // ansiTruncateClean truncates an ANSI string to the given visible width and
 // appends an SGR reset so that no trailing escape sequences from beyond the
 // cut point can bleed into subsequent content.
