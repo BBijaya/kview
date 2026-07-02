@@ -31,6 +31,28 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.invalidateHeader()
 		a.updateSizes()
 
+	case tea.PasteMsg:
+		// Route pasted text to the active input, mirroring the key-press
+		// priority chain below. Without this, PasteMsg matched no case and
+		// pasting into any input silently did nothing.
+		var cmd tea.Cmd
+		switch {
+		case a.dialog.IsVisible():
+			// Confirm dialog has no text input; swallow the paste so it
+			// doesn't leak into whatever gains focus next.
+		case a.pfPicker.IsVisible():
+			a.pfPicker, cmd = a.pfPicker.Update(msg)
+		case a.scalePicker.IsVisible():
+			a.scalePicker, cmd = a.scalePicker.Update(msg)
+		case a.palette.IsVisible():
+			a.palette, cmd = a.palette.Update(msg)
+		case a.inputMode == ModeCommand:
+			a.commandInput, cmd = a.commandInput.Update(msg)
+		case a.inputMode == ModeFilter:
+			a.searchInput, cmd = a.searchInput.Update(msg)
+		}
+		return a, cmd
+
 	case tea.KeyPressMsg:
 		// Handle dialog first
 		if a.dialog.IsVisible() {
