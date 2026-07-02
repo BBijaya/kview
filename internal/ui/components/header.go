@@ -632,33 +632,34 @@ func (h *Header) formatColumnsLine(columns []string, widths []int) string {
 	return result.String()
 }
 
-// renderCategoryWithResources renders category tabs and resource tabs on same row
+// renderCategoryWithResources renders category tabs and resource tabs on same
+// row, budgeted to the header width. Segments that don't fit are dropped from
+// the end (with an ellipsis indicator) so the row never wraps — the layout
+// assumes the header is exactly 7 lines, and an overflowing tab row would
+// push the body and footer out of alignment.
 func (h *Header) renderCategoryWithResources() string {
 	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
 	indicator := theme.Styles.CategoryIndicator.Render("►")
-
-	var result strings.Builder
-	result.WriteString(bgStyle.Render("  "))
-	result.WriteString(indicator)
-	result.WriteString(bgStyle.Render(" "))
 
 	categories := h.categories
 	if len(categories) == 0 {
 		categories = []string{"Workloads", "Network", "Config", "Cluster"}
 	}
 
-	// Render categories
+	// Build the row as independent segments so it can be cut cleanly at
+	// segment boundaries when the terminal is narrow.
+	var segments []string
 	for i, cat := range categories {
 		style := theme.Styles.CategoryItem
 		if h.highlightTabs && i == h.activeCategory {
 			style = theme.Styles.CategoryItemActive
 		}
-		result.WriteString(style.Render(cat))
+		segments = append(segments, style.Render(cat))
 	}
 
-	result.WriteString(bgStyle.Render("   "))
+	segments = append(segments, bgStyle.Render("   "))
 
-	// Render resource tabs for active category
+	// Resource tabs for active category
 	var tabs []string
 	if h.activeCategory < len(h.resourceTabs) {
 		tabs = h.resourceTabs[h.activeCategory]
@@ -673,14 +674,38 @@ func (h *Header) renderCategoryWithResources() string {
 		if h.highlightTabs && i == h.activeResourceIdx {
 			style = theme.Styles.ResourceItemActive
 		}
-
-		numStr := numStyle.Render("[" + intToStr(i+1) + "]")
-		result.WriteString(numStr)
-		result.WriteString(style.Render(tab))
-		result.WriteString(bgStyle.Render(" "))
+		segments = append(segments,
+			numStyle.Render("["+intToStr(i+1)+"]")+style.Render(tab)+bgStyle.Render(" "))
 	}
 
-	return result.String()
+	var result strings.Builder
+	result.WriteString(bgStyle.Render("  "))
+	result.WriteString(indicator)
+	result.WriteString(bgStyle.Render(" "))
+	used := lipgloss.Width(result.String())
+
+	ellipsis := lipgloss.NewStyle().
+		Background(theme.ColorBackground).
+		Foreground(theme.ColorMuted).Render("…")
+
+	for _, seg := range segments {
+		w := lipgloss.Width(seg)
+		if used+w > h.width {
+			// Segment doesn't fit — cut here and mark the cut, trimming a
+			// cell if needed so the ellipsis itself fits.
+			if used+1 > h.width && h.width > 1 {
+				return ansiTruncateClean(result.String(), h.width-1) + ellipsis
+			}
+			result.WriteString(ellipsis)
+			break
+		}
+		result.WriteString(seg)
+		used += w
+	}
+
+	// Safety net: guarantee the row never exceeds the header width even if
+	// a single segment (e.g. the prefix on a tiny terminal) overflows.
+	return ansiTruncateClean(result.String(), h.width)
 }
 
 
