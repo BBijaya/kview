@@ -155,17 +155,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.tabBar.SetActive(newIdx)
 			return a, a.switchView(ViewType(newIdx))
 
-		case key.Matches(msg, DefaultKeyMap().DetailsPanel):
-			a.showDetailsPanel = !a.showDetailsPanel
-			if a.showDetailsPanel && a.selectedResource != nil {
-				return a, a.detailsPanel.SetResource(
-					a.selectedResource.Kind,
-					a.selectedResource.Namespace,
-					a.selectedResource.Name,
-				)
-			}
-			return a, nil
-
 		case key.Matches(msg, DefaultKeyMap().Escape):
 			// When in a drill-down (view stack non-empty), Escape goes back.
 			// Views that handle Escape themselves (health, pulse, logs, etc.)
@@ -619,10 +608,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			UID:       msg.UID,
 		}
 		a.setStatus(fmt.Sprintf("Selected: %s/%s", msg.Kind, msg.Name), false)
-		// Update details panel if visible
-		if a.showDetailsPanel {
-			cmds = append(cmds, a.detailsPanel.SetResource(msg.Kind, msg.Namespace, msg.Name))
-		}
 
 	case views.ConfirmActionMsg:
 		a.dialog.ShowConfirm(msg.Title, msg.Message, func() {

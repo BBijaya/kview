@@ -363,8 +363,7 @@ func (a *App) switchContext(contextName string) tea.Cmd {
 			}
 		}
 
-		// Update details panel and special views clients
-		a.detailsPanel.SetClient(newClient)
+		// Update special views clients
 		a.describeView.SetClient(newClient)
 		a.logsView.SetClient(newClient)
 		a.yamlView.SetClient(newClient)

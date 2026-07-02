@@ -36,7 +36,6 @@ type KeyMap struct {
 	PrevTab      key.Binding
 
 	// Panels
-	DetailsPanel key.Binding
 	AutoRefresh  key.Binding
 
 	// Actions
@@ -275,10 +274,6 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys(":"),
 			key.WithHelp(":", "command mode"),
 		),
-		DetailsPanel: key.NewBinding(
-			key.WithKeys("i"),
-			key.WithHelp("i", "toggle details"),
-		),
 		AutoRefresh: key.NewBinding(
 			key.WithKeys("ctrl+a"),
 			key.WithHelp("ctrl+a", "auto-refresh"),
@@ -377,6 +372,6 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Filter, k.CopyName, k.Namespace, k.Context, k.Refresh, k.AutoRefresh},
 		{k.SortToggle, k.SortColPrev, k.SortColNext, k.ScrollLeft, k.ScrollRight},
 		{k.LogSearch, k.LogSearchNext, k.LogSearchPrev, k.LogSave, k.LogTimestamp, k.LogPrevious, k.LogTimeRange, k.LogWrap},
-		{k.DetailsPanel, k.Palette, k.Help, k.Quit},
+		{k.Palette, k.Help, k.Quit},
 	}
 }
