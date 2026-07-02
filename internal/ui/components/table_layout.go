@@ -400,17 +400,20 @@ func (t *Table) calculateColumnWidths(rowNumWidth, indicatorWidth int) []int {
 				}
 				t.maxColOffset = i
 			}
-			if t.colOffset > t.maxColOffset {
-				t.colOffset = t.maxColOffset
-			}
 		} else {
 			// Shrinking was sufficient — no scroll needed
 			t.maxColOffset = 0
-			t.colOffset = 0
 		}
 	} else {
 		// Exact fit
 		t.maxColOffset = 0
+	}
+
+	// Clamp the scroll offset on every path: when the terminal grows and
+	// all columns fit again (maxColOffset drops to 0), a stale offset would
+	// silently hide the leading columns with no scroll indicator.
+	if t.colOffset > t.maxColOffset {
+		t.colOffset = t.maxColOffset
 	}
 
 	return widths

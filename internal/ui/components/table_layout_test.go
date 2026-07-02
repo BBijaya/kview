@@ -126,6 +126,40 @@ func TestCalculateColumnWidthsOverflowStillShrinksFlexible(t *testing.T) {
 	}
 }
 
+func TestColOffsetResetsWhenColumnsFitAgain(t *testing.T) {
+	// Regression: scroll right on a narrow terminal, then widen the
+	// terminal so everything fits. The stale offset used to hide the
+	// leading columns (including NAME) with no scroll indicator.
+	cols := []Column{
+		{Title: "NAME", Width: 20},
+		{Title: "READY", Width: 8},
+		{Title: "STATUS", Width: 12},
+		{Title: "AGE", Width: 6},
+	}
+	tbl := layoutTable(cols, []Row{
+		{Values: []string{"a-fairly-long-pod-name", "1/1", "Running", "5d"}},
+	}, 25)
+
+	tbl.calculateColumnWidths(0, 0)
+	if tbl.maxColOffset == 0 {
+		t.Fatal("fixture not narrow enough: expected horizontal scroll to engage")
+	}
+
+	// User scrolls all the way right
+	tbl.colOffset = tbl.maxColOffset
+
+	// Terminal widens; everything fits now
+	tbl.SetSize(120, 20)
+	tbl.calculateColumnWidths(0, 0)
+
+	if tbl.maxColOffset != 0 {
+		t.Fatalf("maxColOffset = %d, want 0 on wide terminal", tbl.maxColOffset)
+	}
+	if tbl.colOffset != 0 {
+		t.Errorf("colOffset = %d, want 0 — leading columns are hidden with no indicator", tbl.colOffset)
+	}
+}
+
 func TestColumnStabilityAcrossRefresh(t *testing.T) {
 	// The regression that motivated the change: a value changing length in
 	// one fixed column must not move the widths of other fixed columns.
