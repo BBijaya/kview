@@ -257,6 +257,16 @@ func (a *App) handleCommand(cmd string, args []string) tea.Cmd {
 		if len(args) == 0 {
 			return a.toasts.PushInfo("Xray", "Usage: :xray <kind|name|kind/name|ns/kind/name>  (e.g. :xray deploy, :xray svc/nginx, :xray default/deploy/nginx)")
 		}
+		if a.activeView == ViewXray {
+			// Already in xray: chain — current state joins the Escape
+			// trail and the tree retargets instantly from the loaded graph.
+			cmd, err := a.xrayView.Retarget(strings.Join(args, " "))
+			if err != nil {
+				return a.toasts.PushError("Xray", err.Error())
+			}
+			return cmd
+		}
+		a.xrayView.ResetNav()
 		if err := a.xrayView.SetMode(strings.Join(args, " ")); err != nil {
 			return a.toasts.PushError("Xray", err.Error())
 		}

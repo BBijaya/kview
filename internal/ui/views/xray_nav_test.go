@@ -102,7 +102,7 @@ func TestXrayDrillableRules(t *testing.T) {
 	}
 }
 
-func TestXraySetModeClearsDrillTrail(t *testing.T) {
+func TestXrayResetNavClearsDrillTrail(t *testing.T) {
 	v := NewXrayView(nil)
 	v.graph = xrayNavFixture()
 	v.mode = xrayModeType
@@ -117,11 +117,56 @@ func TestXraySetModeClearsDrillTrail(t *testing.T) {
 		t.Fatal("fixture: expected a drill to have happened")
 	}
 
-	if err := v.SetMode("deploy"); err != nil {
-		t.Fatalf("SetMode: %v", err)
-	}
+	v.ResetNav()
 	if len(v.navStack) != 0 {
-		t.Errorf("navStack after SetMode = %d entries, want 0 (fresh entry point)", len(v.navStack))
+		t.Errorf("navStack after ResetNav = %d entries, want 0 (fresh entry point)", len(v.navStack))
+	}
+}
+
+func TestXrayRetargetChainsAndPopsBack(t *testing.T) {
+	// :xray deploy → :xray pod → :xray web-config → Escape twice must land
+	// back through Pod tree to the Deployment tree.
+	v := NewXrayView(nil)
+	v.graph = xrayNavFixture()
+	v.mode = xrayModeType
+	v.rootKind = "Deployment"
+	v.initExpanded()
+	v.rebuildTable()
+
+	if _, err := v.Retarget("pod"); err != nil {
+		t.Fatalf("Retarget(pod): %v", err)
+	}
+	if v.mode != xrayModeType || v.rootKind != "Pod" {
+		t.Errorf("after retarget: mode=%v rootKind=%q, want type mode / Pod", v.mode, v.rootKind)
+	}
+	if findFlatNode(v.flatNodes, "web-abc-1") == nil {
+		t.Errorf("retargeted tree missing pod; nodes: %v", nodeNames(v.flatNodes))
+	}
+	if len(v.navStack) != 1 {
+		t.Fatalf("navStack after retarget = %d, want 1", len(v.navStack))
+	}
+
+	if _, err := v.Retarget("web-config"); err != nil {
+		t.Fatalf("Retarget(web-config): %v", err)
+	}
+	if v.mode != xrayModeResource || v.focusName != "web-config" {
+		t.Errorf("after second retarget: mode=%v focusName=%q, want resource mode / web-config", v.mode, v.focusName)
+	}
+
+	if !v.popNav() {
+		t.Fatal("first pop failed")
+	}
+	if v.rootKind != "Pod" {
+		t.Errorf("after first pop rootKind = %q, want Pod", v.rootKind)
+	}
+	if !v.popNav() {
+		t.Fatal("second pop failed")
+	}
+	if v.rootKind != "Deployment" {
+		t.Errorf("after second pop rootKind = %q, want Deployment", v.rootKind)
+	}
+	if v.popNav() {
+		t.Error("trail should be empty after popping both retargets")
 	}
 }
 
