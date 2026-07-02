@@ -178,21 +178,35 @@ func TestBuilderPodStatus(t *testing.T) {
 			want:       StatusWarning,
 		},
 		{
-			// NOTE: actual behavior — the Ready check runs before the
-			// CrashLoopBackOff check, so a crash-looping (not ready)
-			// container yields Warning rather than Error.
 			name:  "running crashloop container not ready",
 			phase: "Running",
 			containers: []k8s.ContainerInfo{
 				{Name: "app", Ready: false, StateReason: "CrashLoopBackOff"},
 			},
-			want: StatusWarning,
+			want: StatusError,
 		},
 		{
 			name:  "running crashloop container ready",
 			phase: "Running",
 			containers: []k8s.ContainerInfo{
 				{Name: "app", Ready: true, StateReason: "CrashLoopBackOff"},
+			},
+			want: StatusError,
+		},
+		{
+			name:  "running oomkilled container not ready",
+			phase: "Running",
+			containers: []k8s.ContainerInfo{
+				{Name: "app", Ready: false, StateReason: "OOMKilled"},
+			},
+			want: StatusError,
+		},
+		{
+			name:  "error in later container wins over earlier not ready",
+			phase: "Running",
+			containers: []k8s.ContainerInfo{
+				{Name: "sidecar", Ready: false},
+				{Name: "app", Ready: false, StateReason: "CrashLoopBackOff"},
 			},
 			want: StatusError,
 		},
