@@ -224,25 +224,34 @@ func (p *PortForwardPicker) Update(msg tea.Msg) (*PortForwardPicker, tea.Cmd) {
 			}
 
 		default:
-			p.errorMsg = ""
-			var cmd tea.Cmd
-			switch p.focusedField {
-			case 0:
-				p.containerPortInput, cmd = p.containerPortInput.Update(msg)
-				if !p.localPortManual {
-					p.localPortInput.SetValue(p.containerPortInput.Value())
-				}
-			case 1:
-				p.localPortInput, cmd = p.localPortInput.Update(msg)
-				p.localPortManual = true
-			case 2:
-				p.addressInput, cmd = p.addressInput.Update(msg)
-			}
-			return p, cmd
+			return p, p.updateFocusedInput(msg)
 		}
+
+	case tea.PasteMsg:
+		return p, p.updateFocusedInput(msg)
 	}
 
 	return p, nil
+}
+
+// updateFocusedInput forwards an input message (key press or paste) to the
+// currently focused field.
+func (p *PortForwardPicker) updateFocusedInput(msg tea.Msg) tea.Cmd {
+	p.errorMsg = ""
+	var cmd tea.Cmd
+	switch p.focusedField {
+	case 0:
+		p.containerPortInput, cmd = p.containerPortInput.Update(msg)
+		if !p.localPortManual {
+			p.localPortInput.SetValue(p.containerPortInput.Value())
+		}
+	case 1:
+		p.localPortInput, cmd = p.localPortInput.Update(msg)
+		p.localPortManual = true
+	case 2:
+		p.addressInput, cmd = p.addressInput.Update(msg)
+	}
+	return cmd
 }
 
 func (p *PortForwardPicker) blurAll() {

@@ -109,6 +109,11 @@ func (p *ScalePicker) Update(msg tea.Msg) (*ScalePicker, tea.Cmd) {
 			p.replicaInput, cmd = p.replicaInput.Update(msg)
 			return p, cmd
 		}
+
+	case tea.PasteMsg:
+		var cmd tea.Cmd
+		p.replicaInput, cmd = p.replicaInput.Update(msg)
+		return p, cmd
 	}
 
 	return p, nil
