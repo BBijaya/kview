@@ -99,6 +99,7 @@ type ContainerInfo struct {
 	State             string
 	StateReason       string
 	StateMessage      string
+	LastStateReason   string    // Why the previous container instance terminated (e.g. OOMKilled)
 	LastTerminatedAt  time.Time // When the previous container instance terminated (restart time)
 	CPURequest        int64     // nanocores
 	CPULimit          int64 // nanocores
