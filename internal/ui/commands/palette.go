@@ -280,56 +280,6 @@ func (p *Palette) View() string {
 	return container
 }
 
-// ViewCentered renders the palette centered on the screen
-func (p *Palette) ViewCentered(screenWidth, screenHeight int) string {
-	if !p.visible {
-		return ""
-	}
-
-	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
-
-	content := p.View()
-	contentWidth := lipgloss.Width(content)
-	contentHeight := lipgloss.Height(content)
-
-	// Calculate centering
-	padLeft := (screenWidth - contentWidth) / 2
-	padTop := (screenHeight - contentHeight) / 3 // Slightly above center
-
-	if padLeft < 0 {
-		padLeft = 0
-	}
-	if padTop < 0 {
-		padTop = 0
-	}
-
-	emptyLine := bgStyle.Render(strings.Repeat(" ", screenWidth))
-	leftPad := bgStyle.Render(strings.Repeat(" ", padLeft))
-	rightPadWidth := screenWidth - padLeft - contentWidth
-	if rightPadWidth < 0 {
-		rightPadWidth = 0
-	}
-
-	// Build centered content
-	var lines []string
-	for i := 0; i < padTop; i++ {
-		lines = append(lines, emptyLine)
-	}
-
-	for _, line := range strings.Split(content, "\n") {
-		rightPad := bgStyle.Render(strings.Repeat(" ", rightPadWidth))
-		lines = append(lines, leftPad+line+rightPad)
-	}
-
-	// Fill remaining lines below the palette
-	usedLines := padTop + contentHeight
-	for i := usedLines; i < screenHeight; i++ {
-		lines = append(lines, emptyLine)
-	}
-
-	return strings.Join(lines, "\n")
-}
-
 func (p *Palette) updateMatches() {
 	query := p.input.Value()
 	if query == "" {
