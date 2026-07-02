@@ -145,8 +145,16 @@ func (p *Palette) IsVisible() bool {
 // SetSize sets the palette dimensions
 func (p *Palette) SetSize(width, height int) {
 	p.width = min(width-10, 70)
+	if p.width < 20 {
+		// Floor guard: View() does strings.Repeat(..., p.width-2) and the
+		// input needs a usable width — negative values panic.
+		p.width = 20
+	}
 	p.height = height
 	p.maxVisible = min(10, height-6)
+	if p.maxVisible < 1 {
+		p.maxVisible = 1
+	}
 	p.input.SetWidth(p.width - 4)
 }
 

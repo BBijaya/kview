@@ -30,15 +30,20 @@ func (a *App) View() tea.View {
 		return v
 	}
 
-	// Ensure minimum dimensions
-	width := a.width
-	height := a.height
-	if width < 40 {
-		width = 40
+	// Terminals smaller than the minimum layout cannot fit the chrome;
+	// rendering the clamped layout anyway wraps and garbles. Show a plain
+	// notice that fits any size instead.
+	if a.width > 0 && a.height > 0 && (a.width < minLayoutWidth || a.height < minLayoutHeight) {
+		msg := fmt.Sprintf("Terminal too small: %dx%d (need %dx%d)", a.width, a.height, minLayoutWidth, minLayoutHeight)
+		v := tea.NewView(theme.TruncateString(msg, a.width))
+		v.AltScreen = true
+		v.BackgroundColor = theme.ColorBackground
+		return v
 	}
-	if height < 15 {
-		height = 15
-	}
+
+	// Ensure minimum dimensions (a.width/a.height are zero before the
+	// first WindowSizeMsg; render at the minimum until it arrives)
+	width, height := a.layoutSize()
 
 	// Calculate layout heights
 	// Header: 7 info lines (borderless, plain text rows)
