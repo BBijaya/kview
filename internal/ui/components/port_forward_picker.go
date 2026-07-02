@@ -376,10 +376,37 @@ func (p *PortForwardPicker) renderBox() string {
 	}
 	lines = append(lines, padContent(mutedStyle.Render(nsResource)))
 
-	// Available ports (vertical, one per line)
+	// Available ports (vertical, one per line), budgeted to the terminal
+	// height. The box must never grow taller than the screen: Overlay clips
+	// the bottom, which would hide the input fields, the validation error,
+	// and the enter/esc footer. Overflowing hints collapse into a summary
+	// line — they are informational only, the port is typed either way.
 	multiContainer := p.hasMultipleContainers()
 	if len(p.ports) > 0 {
-		for _, entry := range p.ports {
+		// Fixed chrome: top border, name line, blank, 3 fields, blank,
+		// footer, bottom border — plus the conditional note/error lines.
+		chrome := 10
+		if multiContainer {
+			chrome++
+		}
+		if p.errorMsg != "" {
+			chrome++
+		}
+		budget := p.height - 2 - chrome
+		if p.height <= 0 {
+			budget = len(p.ports) // no size info yet; render everything
+		}
+
+		visible := p.ports
+		var overflow int
+		if budget < len(p.ports) {
+			if budget < 1 {
+				budget = 1 // always keep at least the summary line
+			}
+			visible = p.ports[:budget-1]
+			overflow = len(p.ports) - len(visible)
+		}
+		for _, entry := range visible {
 			hint := fmt.Sprintf("  %d/%s", entry.Port, entry.Protocol)
 			if entry.Name != "" {
 				hint += " (" + entry.Name + ")"
@@ -388,6 +415,9 @@ func (p *PortForwardPicker) renderBox() string {
 				hint += " [" + entry.Container + "]"
 			}
 			lines = append(lines, padContent(mutedStyle.Render(hint)))
+		}
+		if overflow > 0 {
+			lines = append(lines, padContent(mutedStyle.Render(fmt.Sprintf("  … %d more port(s)", overflow))))
 		}
 	}
 
