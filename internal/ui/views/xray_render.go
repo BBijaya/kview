@@ -74,8 +74,11 @@ func (v *XrayView) flattenTypeMode() []*xrayNode {
 			continue
 		}
 
-		visited := make(map[string]bool)
+		// Each root gets its own visited map: dedup within a subtree
+		// (cycle safety) but not across sibling roots — a pod selected by
+		// two services must render under both, not just the first.
 		for _, root := range nsResources {
+			visited := make(map[string]bool)
 			v.flattenNodeRecursive(root, 1, &nodes, visited)
 		}
 	}
