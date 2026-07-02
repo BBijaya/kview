@@ -101,8 +101,7 @@ type App struct {
 	searchInput   *components.SearchInput
 
 	// New components (Phase 1)
-	detailsPanel    *components.DetailsPanel
-	toasts          *components.ToastStack
+	toasts *components.ToastStack
 
 	// Generic resource view
 	genericView         *views.GenericResourceView
@@ -121,7 +120,6 @@ type App struct {
 	statusMessage    string
 	statusIsError    bool
 	statusExpiresAt  time.Time
-	showDetailsPanel bool
 	autoRefresh      bool
 	refreshInterval  time.Duration
 	quitting         bool
@@ -209,7 +207,6 @@ func NewApp(client k8s.Client) *App {
 		frame:           components.NewFrame(),
 		commandInput:    components.NewCommandInput(),
 		searchInput:     components.NewSearchInput(),
-		detailsPanel:    components.NewDetailsPanel(client),
 		toasts:          components.NewToastStack(),
 		refreshInterval: 5 * time.Second,
 	}
