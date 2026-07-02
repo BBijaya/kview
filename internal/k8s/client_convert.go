@@ -272,8 +272,10 @@ func (c *K8sClient) podToPodInfo(pod *corev1.Pod) PodInfo {
 		}
 
 		var lastTerminatedAt time.Time
+		lastStateReason := ""
 		if cs.LastTerminationState.Terminated != nil {
 			lastTerminatedAt = cs.LastTerminationState.Terminated.FinishedAt.Time
+			lastStateReason = cs.LastTerminationState.Terminated.Reason
 		}
 
 		info.Containers = append(info.Containers, ContainerInfo{
@@ -284,6 +286,7 @@ func (c *K8sClient) podToPodInfo(pod *corev1.Pod) PodInfo {
 			State:            state,
 			StateReason:      stateReason,
 			StateMessage:     stateMessage,
+			LastStateReason:  lastStateReason,
 			LastTerminatedAt: lastTerminatedAt,
 		})
 	}

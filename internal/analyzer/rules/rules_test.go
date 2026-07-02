@@ -185,6 +185,56 @@ func TestOOMKilledRule(t *testing.T) {
 			wantProblem: "Container worker was OOM killed",
 		},
 		{
+			name: "restarted after OOM kill detected via last state",
+			pods: []k8s.PodInfo{
+				makePod("worker-restarted", "uid-14", k8s.ContainerInfo{
+					Name:            "worker",
+					Image:           "worker:v2",
+					State:           "Running",
+					LastStateReason: "OOMKilled",
+					RestartCount:    1,
+				}),
+			},
+			wantCount:   1,
+			wantID:      "oom-uid-14-worker",
+			wantProblem: "Container worker was OOM killed",
+			wantRootCause: []string{
+				"exceeded its memory limit",
+				"has since restarted (current state: Running)",
+				"restarted 1 times",
+			},
+		},
+		{
+			name: "crashlooping after OOM kill detected via last state",
+			pods: []k8s.PodInfo{
+				makePod("worker-crashing", "uid-15", k8s.ContainerInfo{
+					Name:            "worker",
+					State:           "Waiting",
+					StateReason:     "CrashLoopBackOff",
+					LastStateReason: "OOMKilled",
+					RestartCount:    4,
+				}),
+			},
+			wantCount:   1,
+			wantID:      "oom-uid-15-worker",
+			wantProblem: "Container worker was OOM killed",
+			wantRootCause: []string{
+				"has since restarted (current state: Waiting)",
+			},
+		},
+		{
+			name: "last state Completed not flagged",
+			pods: []k8s.PodInfo{
+				makePod("worker-cycled", "uid-16", k8s.ContainerInfo{
+					Name:            "worker",
+					State:           "Running",
+					LastStateReason: "Completed",
+					RestartCount:    1,
+				}),
+			},
+			wantCount: 0,
+		},
+		{
 			name: "healthy pod not flagged",
 			pods: []k8s.PodInfo{
 				makePod("worker-ok", "uid-12", healthyContainer("worker")),

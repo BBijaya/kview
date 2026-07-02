@@ -24,7 +24,9 @@ func (r *OOMKilledRule) Analyze(resources []k8s.Resource, pods []k8s.PodInfo, ev
 
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
-			if container.StateReason == "OOMKilled" {
+			// Check the last termination state too: an OOM-killed container
+			// usually restarts immediately, leaving OOMKilled only there.
+			if container.StateReason == "OOMKilled" || container.LastStateReason == "OOMKilled" {
 				diagnosis := analyzer.Diagnosis{
 					ID:           fmt.Sprintf("oom-%s-%s", pod.UID, container.Name),
 					ResourceUID:  pod.UID,
@@ -55,6 +57,10 @@ func (r *OOMKilledRule) analyzeRootCause(pod k8s.PodInfo, container k8s.Containe
 	rootCause += "1. The container's memory limit is set too low for the workload\n"
 	rootCause += "2. The application has a memory leak\n"
 	rootCause += "3. The application is processing more data than expected\n"
+
+	if container.StateReason != "OOMKilled" && container.LastStateReason == "OOMKilled" {
+		rootCause += fmt.Sprintf("\nThe container has since restarted (current state: %s); the OOM kill was recorded in its last termination state.", container.State)
+	}
 
 	if container.RestartCount > 0 {
 		rootCause += fmt.Sprintf("\nThe container has been restarted %d times, suggesting this is a recurring issue.", container.RestartCount)
