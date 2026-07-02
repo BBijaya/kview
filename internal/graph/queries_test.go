@@ -81,6 +81,42 @@ func TestGetOwnerChain(t *testing.T) {
 	}
 }
 
+func TestGetOwnerChainIgnoresNonOwnershipEdges(t *testing.T) {
+	// Adversarial edge order: the selects edge arrives before the owns
+	// edge, so a walk over unfiltered parents would pick the Service.
+	g := New()
+	g.AddNode(&Node{UID: "dep-1", Kind: "Deployment", Name: "web", Namespace: "default"})
+	g.AddNode(&Node{UID: "rs-1", Kind: "ReplicaSet", Name: "web-abc", Namespace: "default"})
+	g.AddNode(&Node{UID: "pod-1", Kind: "Pod", Name: "web-abc-1", Namespace: "default"})
+	g.AddNode(&Node{UID: "svc-1", Kind: "Service", Name: "web-svc", Namespace: "default"})
+
+	g.AddEdge("svc-1", "pod-1", RelationSelects)
+	g.AddEdge("dep-1", "rs-1", RelationOwns)
+	g.AddEdge("rs-1", "pod-1", RelationOwns)
+
+	q := NewQuery(g)
+	got := pathUIDs(q.GetOwnerChain("pod-1"))
+	want := []string{"dep-1", "rs-1", "pod-1"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("GetOwnerChain(pod-1) = %v, want %v", got, want)
+	}
+}
+
+func TestGetOwnerChainTerminatesOnCycle(t *testing.T) {
+	g := New()
+	g.AddNode(&Node{UID: "a", Kind: "Thing", Name: "a", Namespace: "default"})
+	g.AddNode(&Node{UID: "b", Kind: "Thing", Name: "b", Namespace: "default"})
+	g.AddEdge("a", "b", RelationOwns)
+	g.AddEdge("b", "a", RelationOwns)
+
+	q := NewQuery(g)
+	got := pathUIDs(q.GetOwnerChain("b"))
+	want := []string{"a", "b"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("GetOwnerChain(b) = %v, want %v", got, want)
+	}
+}
+
 func TestGetDescendants(t *testing.T) {
 	tests := []struct {
 		name string
