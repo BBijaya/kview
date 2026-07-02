@@ -183,10 +183,7 @@ func (p *ScalePicker) renderBox() string {
 
 	// Namespace / resource name
 	maxContentWidth := innerWidth - 2
-	nsResource := p.namespace + "/" + p.name
-	if len(nsResource) > maxContentWidth {
-		nsResource = nsResource[:maxContentWidth-1] + "…"
-	}
+	nsResource := theme.TruncateString(p.namespace+"/"+p.name, maxContentWidth)
 	lines = append(lines, padContent(mutedStyle.Render(nsResource)))
 
 	// Current replicas

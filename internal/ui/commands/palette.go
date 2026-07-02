@@ -256,11 +256,8 @@ func (p *Palette) View() string {
 				line += " [" + cmd.Shortcut + "]"
 			}
 
-			// Truncate if needed
-			maxLen := p.width - 4
-			if len(line) > maxLen {
-				line = line[:maxLen-3] + "..."
-			}
+			// Truncate if needed (visual width, rune-safe)
+			line = theme.TruncateString(line, p.width-4)
 
 			b.WriteString(style.Width(p.width - 2).Render(line))
 			if i < endIdx-1 {

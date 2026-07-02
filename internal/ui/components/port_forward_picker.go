@@ -370,10 +370,7 @@ func (p *PortForwardPicker) renderBox() string {
 
 	// Namespace / resource name (truncate to fit content area)
 	maxContentWidth := innerWidth - 2 // 1 char padding each side
-	nsResource := p.namespace + "/" + p.resourceName
-	if len(nsResource) > maxContentWidth {
-		nsResource = nsResource[:maxContentWidth-1] + "…"
-	}
+	nsResource := theme.TruncateString(p.namespace+"/"+p.resourceName, maxContentWidth)
 	lines = append(lines, padContent(mutedStyle.Render(nsResource)))
 
 	// Available ports (vertical, one per line), budgeted to the terminal
