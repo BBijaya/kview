@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/bijaya/kview/internal/ui/components"
 	"github.com/bijaya/kview/internal/ui/theme"
 )
 
@@ -132,6 +133,9 @@ func (v *PulseView) renderGauge(g, prev GaugeData, hasPrev, selected bool, boxWi
 	// Line 1: top border with title
 	titleText := " " + g.Name + " "
 	titleRendered := titleStyle.Render(titleText)
+	if lipgloss.Width(titleRendered) > innerWidth {
+		titleRendered = components.TruncateANSI(titleRendered, innerWidth)
+	}
 	titleWidth := lipgloss.Width(titleRendered)
 	dashesAfter := innerWidth - titleWidth
 	if dashesAfter < 0 {
@@ -174,8 +178,11 @@ func (v *PulseView) renderGauge(g, prev GaugeData, hasPrev, selected bool, boxWi
 		}
 	}
 
-	summaryWidth := lipgloss.Width(summary)
 	leftPad := 1
+	if lipgloss.Width(summary) > innerWidth-leftPad {
+		summary = components.TruncateANSI(summary, innerWidth-leftPad)
+	}
+	summaryWidth := lipgloss.Width(summary)
 	rightPad := innerWidth - summaryWidth - leftPad
 	if rightPad < 0 {
 		rightPad = 0

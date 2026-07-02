@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/bijaya/kview/internal/ui/components"
 	"github.com/bijaya/kview/internal/ui/theme"
 )
 
@@ -142,6 +143,9 @@ func renderBigNumberPair(ok, fault int) [3]string {
 // Uses lipgloss.Width to measure actual visual width of styled content.
 func centerLine(content string, _ int, totalWidth int) string {
 	bgStyle := lipgloss.NewStyle().Background(theme.ColorBackground)
+	if lipgloss.Width(content) > totalWidth {
+		content = components.TruncateANSI(content, totalWidth)
+	}
 	actualWidth := lipgloss.Width(content)
 	leftPad := (totalWidth - actualWidth) / 2
 	if leftPad < 0 {
