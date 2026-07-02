@@ -426,6 +426,20 @@ func (t *Table) SelectedValue(colIndex int) string {
 }
 
 // SelectedIndex returns the currently selected index
+// SelectByID moves the cursor to the row with the given ID.
+// Returns false if no row matches.
+func (t *Table) SelectByID(id string) bool {
+	for i, row := range t.filteredRows {
+		if row.ID == id {
+			t.cursor = i
+			t.ValidateCursor()
+			t.cacheGen++
+			return true
+		}
+	}
+	return false
+}
+
 func (t *Table) SelectedIndex() int {
 	return t.cursor
 }
