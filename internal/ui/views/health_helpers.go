@@ -81,6 +81,23 @@ func healthIndicator(isSelected bool) string {
 	return lipgloss.NewStyle().Background(theme.ColorBackground).Render("  ")
 }
 
+// healthIconPad is the cell budget reserved for a status/severity/type icon
+// prefix inside a column (icon + spacing). Column layouts account for it in
+// their distributeEqual overhead; headers and rows must both add it to the
+// icon column so labels line up with the values beneath them.
+const healthIconPad = 3
+
+// healthCell truncates and pads content to an exact visual width in terminal
+// cells. fmt's %-*s pads by rune count, which misaligns columns whenever the
+// content contains icons or other multi-cell glyphs.
+func healthCell(content string, width int) string {
+	content = theme.TruncateString(content, width)
+	if pad := width - lipgloss.Width(content); pad > 0 {
+		content += strings.Repeat(" ", pad)
+	}
+	return content
+}
+
 // healthPadRow pads a rendered row line to the target width using the appropriate
 // background color (selection background for selected rows, normal background otherwise).
 func healthPadRow(line string, width int, isSelected bool) string {

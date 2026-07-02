@@ -610,7 +610,7 @@ func (v *HealthView) renderProblemPods(width int) string {
 	hdr := bgStyle.Render("  ") +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.name, "POD")) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.ready, "READY")) + gap +
-		hdrStyle.Render(fmt.Sprintf("%-*s", cols.status, "STATUS")) + gap +
+		hdrStyle.Render(healthCell("STATUS", cols.status+healthIconPad)) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.age, "AGE"))
 	b.WriteString(theme.PadToWidth(hdr, width, theme.ColorBackground))
 	b.WriteString("\n")
@@ -652,7 +652,7 @@ func (v *HealthView) renderProblemPods(width int) string {
 		line := healthIndicator(isSel) +
 			nameStyle.Render(fmt.Sprintf("%-*s", cols.name, theme.TruncateString(podName, cols.name))) + gap +
 			readyStyle.Render(fmt.Sprintf("%-*s", cols.ready, ready)) + gap +
-			statusStyle.Render(theme.StatusIconPrefix(status)+" "+fmt.Sprintf("%-*s", cols.status, theme.TruncateString(status, cols.status))) + gap +
+			statusStyle.Render(healthCell(theme.StatusIconPrefix(status)+" "+status, cols.status+healthIconPad)) + gap +
 			mutedStyle.Render(fmt.Sprintf("%-*s", cols.age, theme.FormatAge(p.Age)))
 
 		b.WriteString(healthPadRow(line, width, isSel))
@@ -749,7 +749,7 @@ func (v *HealthView) renderRestarts(width int) string {
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.name, "POD")) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.restarts, "RESTARTS")) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.reason, "REASON")) + gap +
-		hdrStyle.Render(fmt.Sprintf("%-*s", cols.status, "STATUS")) + gap +
+		hdrStyle.Render(healthCell("STATUS", cols.status+healthIconPad)) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.lastRestart, "LAST RESTART"))
 	b.WriteString(theme.PadToWidth(hdr, width, theme.ColorBackground))
 	b.WriteString("\n")
@@ -800,7 +800,7 @@ func (v *HealthView) renderRestarts(width int) string {
 			nameStyle.Render(fmt.Sprintf("%-*s", cols.name, theme.TruncateString(podName, cols.name))) + gap +
 			countStyle.Render(fmt.Sprintf("%-*d", cols.restarts, p.Restarts)) + gap +
 			reasonStyle.Render(fmt.Sprintf("%-*s", cols.reason, theme.TruncateString(reason, cols.reason))) + gap +
-			mutedStyle.Render(theme.StatusIconPrefix(p.Phase)+" "+fmt.Sprintf("%-*s", cols.status, theme.TruncateString(p.Phase, cols.status))) + gap +
+			mutedStyle.Render(healthCell(theme.StatusIconPrefix(p.Phase)+" "+p.Phase, cols.status+healthIconPad)) + gap +
 			mutedStyle.Render(fmt.Sprintf("%-*s", cols.lastRestart, lastRestart))
 
 		b.WriteString(healthPadRow(line, width, isSel))
@@ -836,7 +836,7 @@ func (v *HealthView) renderIssues(width int) string {
 	gap := bgStyle.Render(" ")
 	hdr := bgStyle.Render("  ") +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.resource, "RESOURCE")) + gap +
-		hdrStyle.Render(fmt.Sprintf("%-*s", cols.severity, "SEVERITY")) + gap +
+		hdrStyle.Render(healthCell("SEVERITY", cols.severity+healthIconPad)) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.problem, "PROBLEM"))
 	b.WriteString(theme.PadToWidth(hdr, width, theme.ColorBackground))
 	b.WriteString("\n")
@@ -871,7 +871,7 @@ func (v *HealthView) renderIssues(width int) string {
 
 		line := healthIndicator(isSel) +
 			resourceStyle.Render(fmt.Sprintf("%-*s", cols.resource, theme.TruncateString(resourceName, cols.resource))) + gap +
-			severityStyle.Render(icon+"  "+fmt.Sprintf("%-*s", cols.severity, severityLabel)) + gap +
+			severityStyle.Render(healthCell(icon+"  "+severityLabel, cols.severity+healthIconPad)) + gap +
 			problemStyle.Render(fmt.Sprintf("%-*s", cols.problem, theme.TruncateString(d.Problem, cols.problem)))
 
 		b.WriteString(healthPadRow(line, width, isSel))
@@ -912,7 +912,7 @@ func (v *HealthView) renderEvents(width int) string {
 	hdr := bgStyle.Render("  ") +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.resource, "RESOURCE")) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.ago, "AGO")) + gap +
-		hdrStyle.Render(fmt.Sprintf("%-*s", cols.typeLabel, "TYPE")) + gap +
+		hdrStyle.Render(healthCell("TYPE", cols.typeLabel+healthIconPad)) + gap +
 		hdrStyle.Render(fmt.Sprintf("%-*s", cols.message, "MESSAGE"))
 	b.WriteString(theme.PadToWidth(hdr, width, theme.ColorBackground))
 	b.WriteString("\n")
@@ -945,7 +945,7 @@ func (v *HealthView) renderEvents(width int) string {
 		line := healthIndicator(isSel) +
 			resourceStyle.Render(fmt.Sprintf("%-*s", cols.resource, theme.TruncateString(resourceName, cols.resource))) + gap +
 			agoStyle.Render(fmt.Sprintf("%-*s", cols.ago, ago+" ago")) + gap +
-			typeStyle.Render(typeIcon+"  "+fmt.Sprintf("%-*s", cols.typeLabel, typeLabel)) + gap +
+			typeStyle.Render(healthCell(typeIcon+"  "+typeLabel, cols.typeLabel+healthIconPad)) + gap +
 			msgStyle.Render(fmt.Sprintf("%-*s", cols.message, fullMsg))
 
 		b.WriteString(healthPadRow(line, width, isSel))
