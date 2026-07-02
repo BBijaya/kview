@@ -98,7 +98,10 @@ func (v *HelpView) ShortHelp() []key.Binding {
 func (v *HelpView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
 	v.viewport.SetWidth(width)
-	v.viewport.SetHeight(height - 3)
+	v.viewport.SetHeight(height - 2) // header + footer
+	if v.viewport.Height() < 1 {
+		v.viewport.SetHeight(1)
+	}
 	if width != v.lastBuiltWidth {
 		v.lastBuiltWidth = width
 		v.viewport.SetContent(v.buildContent())

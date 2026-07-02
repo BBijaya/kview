@@ -393,7 +393,10 @@ func (v *LogsView) ShortHelp() []key.Binding {
 func (v *LogsView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
 	v.viewport.SetWidth(width)
-	v.viewport.SetHeight(height - 3) // Account for header and footer
+	v.viewport.SetHeight(height - 2) // header + footer
+	if v.viewport.Height() < 1 {
+		v.viewport.SetHeight(1)
+	}
 }
 
 // IsLoading returns whether the view is currently loading data
