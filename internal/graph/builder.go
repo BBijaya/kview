@@ -557,13 +557,16 @@ func (b *Builder) addResource(r *k8s.Resource) {
 func (b *Builder) getPodStatus(pod *k8s.PodInfo) NodeStatus {
 	switch pod.Phase {
 	case "Running":
-		// Check if all containers are ready
+		// Error reasons win over readiness: a crash-looping container is
+		// also not ready, so checking Ready first would mask the error.
+		for _, c := range pod.Containers {
+			if c.StateReason == "CrashLoopBackOff" || c.StateReason == "OOMKilled" {
+				return StatusError
+			}
+		}
 		for _, c := range pod.Containers {
 			if !c.Ready {
 				return StatusWarning
-			}
-			if c.StateReason == "CrashLoopBackOff" || c.StateReason == "OOMKilled" {
-				return StatusError
 			}
 		}
 		return StatusHealthy
