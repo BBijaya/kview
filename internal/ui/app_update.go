@@ -250,10 +250,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if copyText != "" {
 				err := clipboard.WriteAll(copyText)
 				if err != nil {
-					a.setFooterMessage("Copy failed: " + err.Error())
 					return a, a.toasts.PushError("Copy Failed", err.Error())
 				}
-				a.setFooterMessage(footerMsg)
 				return a, a.toasts.PushSuccess("Copied", footerMsg)
 			} else {
 				a.setFooterMessage("Nothing to copy")
