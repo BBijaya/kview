@@ -1,9 +1,11 @@
 package components
 
 import (
+	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func layoutTable(columns []Column, rows []Row, width int) *Table {
@@ -157,6 +159,27 @@ func TestColOffsetResetsWhenColumnsFitAgain(t *testing.T) {
 	}
 	if tbl.colOffset != 0 {
 		t.Errorf("colOffset = %d, want 0 — leading columns are hidden with no indicator", tbl.colOffset)
+	}
+}
+
+func TestSortArrowSurvivesNarrowColumn(t *testing.T) {
+	// Regression: the arrow was appended to the title and the combined
+	// string truncated to the column width, so short columns (AGE = 3
+	// cells) silently dropped the only indication that a sort is active.
+	tbl := layoutTable(
+		[]Column{
+			{Title: "NAME", Width: 10, MinWidth: 10, Flexible: true},
+			{Title: "AGE", Width: 3},
+		},
+		[]Row{{Values: []string{"web-abc", "5d"}}},
+		60,
+	)
+	tbl.sortCol = 1
+	tbl.sortAsc = true
+
+	plain := ansi.Strip(tbl.View())
+	if !strings.Contains(plain, "▲") {
+		t.Errorf("sort arrow missing from header with narrow sorted column:\n%s", plain)
 	}
 }
 
