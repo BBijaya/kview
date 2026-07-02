@@ -484,10 +484,7 @@ func (a *App) buildResourceLabel() string {
 		mutedStyle.Render(count)
 
 	if filterText != "" {
-		display := filterText
-		if len(display) > 20 {
-			display = display[:17] + "..."
-		}
+		display := theme.TruncateString(filterText, 20)
 		filterStyle := lipgloss.NewStyle().
 			Foreground(theme.ColorAccent).
 			Background(theme.ColorBackground)
