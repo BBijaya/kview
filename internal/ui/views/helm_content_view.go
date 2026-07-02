@@ -263,7 +263,10 @@ func (v *HelmContentView) ShortHelp() []key.Binding {
 func (v *HelmContentView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
 	v.viewport.SetWidth(width)
-	v.viewport.SetHeight(height - 3) // header + footer + divider
+	v.viewport.SetHeight(height - 2) // header + footer
+	if v.viewport.Height() < 1 {
+		v.viewport.SetHeight(1)
+	}
 }
 
 func (v *HelmContentView) IsLoading() bool { return v.loading }

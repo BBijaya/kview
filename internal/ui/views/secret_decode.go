@@ -222,7 +222,10 @@ func (v *SecretDecodeView) ShortHelp() []key.Binding {
 func (v *SecretDecodeView) SetSize(width, height int) {
 	v.BaseView.SetSize(width, height)
 	v.viewport.SetWidth(width)
-	v.viewport.SetHeight(height - 3)
+	v.viewport.SetHeight(height - 2) // header + footer
+	if v.viewport.Height() < 1 {
+		v.viewport.SetHeight(1)
+	}
 }
 
 func (v *SecretDecodeView) IsLoading() bool { return v.loading }
