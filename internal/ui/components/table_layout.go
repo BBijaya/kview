@@ -10,27 +10,39 @@ import (
 
 // measureContentWidths scans header titles and all row data to compute
 // content-aware column widths, like k9s's ComputeMaxColumns.
+// Widths are kept as a high-water mark across refreshes so columns don't
+// shrink (and shift the whole layout) every time data changes; the mark
+// resets on SetColumns, i.e. when switching to a different resource view.
 func (t *Table) measureContentWidths() {
-	t.measuredWidths = make([]int, len(t.columns))
+	fresh := make([]int, len(t.columns))
 	// Phase 1: header title widths
 	for i, col := range t.columns {
-		t.measuredWidths[i] = lipgloss.Width(col.Title)
+		fresh[i] = lipgloss.Width(col.Title)
 	}
 	// Phase 2: scan all rows, track max content width + 1 padding (like k9s colPadding=1)
 	for _, row := range t.rows {
 		for j, val := range row.Values {
-			if j < len(t.measuredWidths) {
+			if j < len(fresh) {
 				w := lipgloss.Width(val) + 1
-				if w > t.measuredWidths[j] {
-					t.measuredWidths[j] = w
+				if w > fresh[j] {
+					fresh[j] = w
 				}
 			}
 		}
 	}
 	// Account for status icons (2 chars: icon + space)
-	if t.showStatusIcons && t.statusColumnIdx >= 0 && t.statusColumnIdx < len(t.measuredWidths) {
-		t.measuredWidths[t.statusColumnIdx] += 2
+	if t.showStatusIcons && t.statusColumnIdx >= 0 && t.statusColumnIdx < len(fresh) {
+		fresh[t.statusColumnIdx] += 2
 	}
+	// High-water mark: never shrink below a previously measured width
+	if len(t.measuredWidths) == len(fresh) {
+		for i, prev := range t.measuredWidths {
+			if prev > fresh[i] {
+				fresh[i] = prev
+			}
+		}
+	}
+	t.measuredWidths = fresh
 }
 
 // applyFilter filters rows based on the current filter string, then sorts.
@@ -279,20 +291,45 @@ func (t *Table) calculateColumnWidths(rowNumWidth, indicatorWidth int) []int {
 	}
 
 	if totalUsed < available {
-		// Phase 2: distribute remaining space equally across all columns
-		// plus one trailing slot, so the gap after the last column matches.
+		// Phase 2: give remaining space to flexible columns so fixed
+		// columns keep stable content-sized widths (a data change in one
+		// column no longer re-pads every other column) and wide terminals
+		// benefit NAME-style columns instead of bloating short ones.
 		remaining := available - totalUsed
-		slots := n + 1 // n columns + 1 trailing padding
-		perSlot := remaining / slots
-		extra := remaining % slots
-		for i := range widths {
-			widths[i] += perSlot
-			if i < extra {
-				widths[i]++
+		flexTotal := 0
+		lastFlex := -1
+		for i, col := range t.columns {
+			if col.Flexible {
+				flexTotal += widths[i]
+				lastFlex = i
 			}
 		}
-		// The leftover (perSlot + any remaining extra) becomes trailing
-		// padding automatically via padWidth in View().
+		if lastFlex >= 0 && flexTotal > 0 {
+			distributed := 0
+			for i, col := range t.columns {
+				if !col.Flexible {
+					continue
+				}
+				share := widths[i] * remaining / flexTotal
+				if i == lastFlex {
+					share = remaining - distributed // exact fill, no rounding loss
+				}
+				widths[i] += share
+				distributed += share
+			}
+		} else {
+			// No flexible columns: fall back to spreading space equally
+			// across all columns plus one trailing slot.
+			slots := n + 1
+			perSlot := remaining / slots
+			extra := remaining % slots
+			for i := range widths {
+				widths[i] += perSlot
+				if i < extra {
+					widths[i]++
+				}
+			}
+		}
 		t.maxColOffset = 0
 	} else if totalUsed > available {
 		// Phase 3: overflow — shrink flexible columns proportionally to fit.
